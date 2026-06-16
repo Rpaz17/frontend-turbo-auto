@@ -1,37 +1,28 @@
 <script lang="tsx">
-import { defineComponent, ref, type PropType } from 'vue';
-import { Lock, Mail, AlertCircle, Zap, ArrowLeft } from "lucide-vue-next";
+import { defineComponent, ref } from 'vue';
+import { Lock, User, AlertCircle, Zap, ArrowLeft } from "lucide-vue-next";
+import { useAuth } from "../composables/useAuth";
 
 
 export default defineComponent({
   name: 'Login',
-  
+
   emits: ["login", "volver"],
-  setup(props, { emit, slots }) {
+  setup(props, { emit }) {
   const onLogin = () => emit('login');
   const onVolver = () => emit('volver');
 
-  const email = ref("");
-  const setEmail = (next: any) => { email.value = typeof next === 'function' ? next(email.value) : next; };
+  // La API de auth usa usuario + contraseña (no correo).
+  const { login, loading, error } = useAuth();
+  const username = ref("");
+  const setUsername = (next: any) => { username.value = typeof next === 'function' ? next(username.value) : next; };
   const password = ref("");
   const setPassword = (next: any) => { password.value = typeof next === 'function' ? next(password.value) : next; };
-  const error = ref(false);
-  const setError = (next: any) => { error.value = typeof next === 'function' ? next(error.value) : next; };
-  const loading = ref(false);
-  const setLoading = (next: any) => { loading.value = typeof next === 'function' ? next(loading.value) : next; };
 
-  const handleSubmit = (e: Event) => {
+  const handleSubmit = async (e: Event) => {
     e.preventDefault();
-    setLoading(true);
-    setError(false);
-    setTimeout(() => {
-      if (email.value === "admin@turboauto.com" && password.value === "admin123") {
-        onLogin();
-      } else {
-        setError(true);
-        setLoading(false);
-      }
-    }, 800);
+    const ok = await login({ username: username.value, password: password.value });
+    if (ok) onLogin();
   };
 
     return () => {
@@ -114,15 +105,15 @@ export default defineComponent({
             <form onSubmit={handleSubmit} class="space-y-5">
               <div>
                 <label class="block text-sm font-semibold mb-2" style={{ color: "#374151" }}>
-                  Correo electrónico
+                  Usuario
                 </label>
                 <div class="relative">
-                  <Mail size={16} class="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "#94A3B8" }} />
+                  <User size={16} class="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "#94A3B8" }} />
                   <input
-                    type="email.value"
-                    value={email.value}
-                    onChange={(e) => setEmail((e.target as HTMLInputElement).value)}
-                    placeholder="admin@turboauto.com"
+                    type="text"
+                    value={username.value}
+                    onInput={(e) => setUsername((e.target as HTMLInputElement).value)}
+                    placeholder="admin"
                     class="w-full pl-10 pr-4 py-3 rounded-xl text-sm outline-none transition-all"
                     style={{
                       background: "#F8FAFC",
@@ -140,9 +131,9 @@ export default defineComponent({
                 <div class="relative">
                   <Lock size={16} class="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "#94A3B8" }} />
                   <input
-                    type="password.value"
+                    type="password"
                     value={password.value}
-                    onChange={(e) => setPassword((e.target as HTMLInputElement).value)}
+                    onInput={(e) => setPassword((e.target as HTMLInputElement).value)}
                     placeholder="••••••••"
                     class="w-full pl-10 pr-4 py-3 rounded-xl text-sm outline-none transition-all"
                     style={{
@@ -158,7 +149,7 @@ export default defineComponent({
                 <div class="flex items-center gap-2 p-3 rounded-xl" style={{ background: "#FEF2F2", border: "1px solid #FECACA" }}>
                   <AlertCircle size={16} style={{ color: "#F87171" }} />
                   <span class="text-sm font-medium" style={{ color: "#DC2626" }}>
-                    Credenciales inválidas. Intenta de nuevo.
+                    {error.value}
                   </span>
                 </div>
               )}
@@ -178,7 +169,7 @@ export default defineComponent({
             </form>
 
             <p class="text-center text-xs mt-6" style={{ color: "#94A3B8" }}>
-              Demo: admin@turboauto.com / admin123
+              Ingresa con tu usuario y contraseña del sistema.
             </p>
           </div>
         </div>

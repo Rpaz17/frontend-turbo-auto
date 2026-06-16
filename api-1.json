@@ -1,0 +1,2872 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/": {
+      "get": {
+        "operationId": "AppController_getHello",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "App"
+        ]
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "description": "Inicia sesión con usuario y contraseña para recibir un token JWT.",
+        "operationId": "AuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthCredentialsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Inicio de sesión exitoso.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "access_token": "..."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Credenciales inválidas.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Invalid credentials"
+                }
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "description": "Registra un nuevo usuario en el sistema. Requiere permisos de administrador.",
+        "operationId": "AuthController_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAuthUserDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Usuario registrado exitosamente.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "1",
+                  "username": "jdoe",
+                  "displayName": "John Doe",
+                  "admin": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autorizado o falta de permisos de administrador."
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/users": {
+      "get": {
+        "description": "Obtiene una lista de todos los usuarios registrados. Requiere permisos de administrador.",
+        "operationId": "AuthController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Lista de usuarios obtenida exitosamente.",
+            "content": {
+              "application/json": {
+                "example": [
+                  {
+                    "id": "1",
+                    "username": "admin",
+                    "displayName": "Administrador",
+                    "admin": true
+                  },
+                  {
+                    "id": "2",
+                    "username": "jdoe",
+                    "displayName": "John Doe",
+                    "admin": false
+                  }
+                ]
+              }
+            }
+          },
+          "401": {
+            "description": "No autorizado o falta de permisos de administrador."
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/user/{id}": {
+      "patch": {
+        "description": "Actualiza el nombre de usuario o contraseña del usuario autenticado.",
+        "operationId": "AuthController_updateUser",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAuthUserDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Perfil actualizado exitosamente.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "1",
+                  "username": "newusername",
+                  "displayName": "John Doe",
+                  "admin": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autorizado."
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/username": {
+      "get": {
+        "description": "Verifica si un nombre de usuario está disponible.",
+        "operationId": "AuthController_getUsernameAvailable",
+        "parameters": [
+          {
+            "name": "username",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Estado de disponibilidad devuelto.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "available": true
+                }
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/ajustes/redes-sociales": {
+      "post": {
+        "description": "Create a new social media link.",
+        "operationId": "RedesSocialesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRedSocialDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The social media link has been successfully created.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": 1,
+                  "name": "Facebook",
+                  "url": "https://www.facebook.com/yourprofile",
+                  "active": true
+                }
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "RedesSociales"
+        ]
+      },
+      "get": {
+        "description": "Retrieve a list of all social media links.",
+        "operationId": "RedesSocialesController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "A list of social media links.",
+            "content": {
+              "application/json": {
+                "example": [
+                  {
+                    "id": 1,
+                    "name": "Facebook",
+                    "url": "https://www.facebook.com/yourprofile",
+                    "active": true
+                  },
+                  {
+                    "id": 2,
+                    "name": "Twitter",
+                    "url": "https://www.twitter.com/yourprofile",
+                    "active": false
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "RedesSociales"
+        ]
+      }
+    },
+    "/ajustes/redes-sociales/activas": {
+      "get": {
+        "description": "Retrieve a list of active social media links.",
+        "operationId": "RedesSocialesController_findActive",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "A list of active social media links.",
+            "content": {
+              "application/json": {
+                "example": [
+                  {
+                    "id": 1,
+                    "name": "Facebook",
+                    "url": "https://www.facebook.com/yourprofile",
+                    "active": true
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "RedesSociales"
+        ]
+      }
+    },
+    "/ajustes/redes-sociales/{id}": {
+      "get": {
+        "description": "Retrieve a specific social media link by its ID.",
+        "operationId": "RedesSocialesController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The social media link with the specified ID.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": 1,
+                  "name": "Facebook",
+                  "url": "https://www.facebook.com/yourprofile",
+                  "active": true
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Social media link not found.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Not Found"
+                }
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "RedesSociales"
+        ]
+      },
+      "patch": {
+        "description": "Update an existing social media link by its ID.",
+        "operationId": "RedesSocialesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRedSocialDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated social media link.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": 1,
+                  "name": "Facebook",
+                  "url": "https://www.facebook.com/yourprofile",
+                  "active": true
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Social media link not found.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Not Found"
+                }
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "RedesSociales"
+        ]
+      }
+    },
+    "/ajustes/redes-sociales/{id}/delete": {
+      "patch": {
+        "description": "Soft delete a social media link by its ID.",
+        "operationId": "RedesSocialesController_delete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The social media link has been successfully deleted.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": 1,
+                  "name": "Facebook",
+                  "url": "https://www.facebook.com/yourprofile",
+                  "active": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Social media link not found.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Not Found"
+                }
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "RedesSociales"
+        ]
+      }
+    },
+    "/sucursales": {
+      "post": {
+        "description": "Crea una nueva sucursal. Requiere privilegios de administrador.",
+        "operationId": "SucursalesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSucursalDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Sucursal creada correctamente",
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "id": 1,
+                    "nombre": "Sucursal Central",
+                    "direccion": "Av. Principal 123"
+                  },
+                  "message": "Sucursal creada correctamente"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Se requieren privilegios de administrador",
+            "content": {
+              "application/json": {
+                "example": {
+                  "statusCode": 403,
+                  "message": "Se requieren privilegios de administrador",
+                  "error": "Forbidden"
+                }
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Sucursales"
+        ]
+      },
+      "get": {
+        "description": "Obtiene el listado de sucursales. Requiere privilegios de administrador.",
+        "operationId": "SucursalesController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Listado de sucursales actualizado",
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "id": 1,
+                      "nombre": "Sucursal Central",
+                      "direccion": "Av. Principal 123"
+                    },
+                    {
+                      "id": 2,
+                      "nombre": "Sucursal Norte",
+                      "direccion": "Calle Secundaria 456"
+                    }
+                  ],
+                  "message": "Listado de sucursales actualizado"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Se requieren privilegios de administrador",
+            "content": {
+              "application/json": {
+                "example": {
+                  "statusCode": 403,
+                  "message": "Se requieren privilegios de administrador",
+                  "error": "Forbidden"
+                }
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Sucursales"
+        ]
+      }
+    },
+    "/sucursales/{id}": {
+      "delete": {
+        "description": "Elimina una sucursal por su ID. Requiere privilegios de administrador.",
+        "operationId": "SucursalesController_delete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sucursal eliminada correctamente",
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "id": 1,
+                    "nombre": "Sucursal Central",
+                    "direccion": "Av. Principal 123"
+                  },
+                  "message": "Sucursal eliminada correctamente"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Se requieren privilegios de administrador",
+            "content": {
+              "application/json": {
+                "example": {
+                  "statusCode": 403,
+                  "message": "Se requieren privilegios de administrador",
+                  "error": "Forbidden"
+                }
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Sucursales"
+        ]
+      },
+      "post": {
+        "description": "Actualiza una sucursal por su ID. Requiere privilegios de administrador.",
+        "operationId": "SucursalesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSucursalDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sucursal actualizada correctamente",
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "id": 1,
+                    "nombre": "Sucursal Central Actualizada",
+                    "direccion": "Av. Principal 123"
+                  },
+                  "message": "Sucursal actualizada correctamente"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Se requieren privilegios de administrador",
+            "content": {
+              "application/json": {
+                "example": {
+                  "statusCode": 403,
+                  "message": "Se requieren privilegios de administrador",
+                  "error": "Forbidden"
+                }
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Sucursales"
+        ]
+      }
+    },
+    "/clientes": {
+      "post": {
+        "description": "Crea un nuevo cliente con los datos proporcionados.",
+        "operationId": "ClientsController_addClient",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateClientDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Cliente creado exitosamente",
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "id": "1",
+                    "rtn": "123456789",
+                    "nombre": "Juan Pérez",
+                    "telefono": "1234567890",
+                    "direccion": "Calle Principal 123",
+                    "created_at": "2026-06-16T19:41:06.526Z",
+                    "activo": true
+                  },
+                  "message": "Cliente creado exitosamente"
+                }
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Clients"
+        ]
+      },
+      "get": {
+        "operationId": "ClientsController_getAllClients",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Lista de clientes obtenida exitosamente",
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "id": "1",
+                      "rtn": "123456789",
+                      "nombre": "Juan Pérez",
+                      "telefono": "1234567890",
+                      "direccion": "Calle Principal 123",
+                      "created_at": "2026-06-16T19:41:06.527Z",
+                      "activo": true
+                    },
+                    {
+                      "id": "2",
+                      "rtn": "987654321",
+                      "nombre": "María Gómez",
+                      "telefono": "0987654321",
+                      "direccion": "Avenida Secundaria 456",
+                      "created_at": "2026-06-16T19:41:06.527Z",
+                      "activo": false
+                    }
+                  ],
+                  "message": "Lista de clientes obtenida exitosamente"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Clients"
+        ]
+      }
+    },
+    "/clientes/{id}": {
+      "get": {
+        "description": "Obtiene los detalles de un cliente por su ID.",
+        "operationId": "ClientsController_getClient",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cliente encontrado",
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "id": "1",
+                    "rtn": "123456789",
+                    "nombre": "Juan Pérez",
+                    "telefono": "1234567890",
+                    "direccion": "Calle Principal 123",
+                    "created_at": "2026-06-16T19:41:06.527Z",
+                    "activo": true
+                  },
+                  "message": "Cliente encontrado"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Cliente no encontrado",
+            "content": {
+              "application/json": {
+                "example": {
+                  "statusCode": 404,
+                  "message": "Cliente con ID 1 no encontrado.",
+                  "error": "Not Found"
+                }
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Clients"
+        ]
+      },
+      "patch": {
+        "description": "Actualiza los datos de un cliente existente por su ID.",
+        "operationId": "ClientsController_updateClient",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateClientDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cliente actualizado exitosamente",
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "id": "1",
+                    "rtn": "123456789",
+                    "nombre": "Juan Pérez Actualizado",
+                    "telefono": "1234567890",
+                    "direccion": "Calle Principal 123",
+                    "created_at": "2026-06-16T19:41:06.527Z",
+                    "activo": true
+                  },
+                  "message": "Cliente actualizado exitosamente"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Cliente no encontrado para actualizar",
+            "content": {
+              "application/json": {
+                "example": {
+                  "statusCode": 404,
+                  "message": "Cliente con ID 1 no encontrado.",
+                  "error": "Not Found"
+                }
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Clients"
+        ]
+      }
+    },
+    "/facturas": {
+      "get": {
+        "description": "Retrieves all receipts.",
+        "operationId": "FacturaController_getFacturas",
+        "parameters": [
+          {
+            "name": "cliente",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fecha",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "numero",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Succesfully got all receipts.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "id": "1",
+                      "numero_factura": "001-001-01-00000001",
+                      "cai_id": "2c5b5e0a-52f8-4a1a-9a5d-7c0c5b9f87bb",
+                      "fecha_emision": "2026-06-03T15:08:03.852Z",
+                      "num_compra_exenta": null,
+                      "num_exonerado": null,
+                      "numero_sag": null,
+                      "sucursal_id": "1",
+                      "autor_id": "1",
+                      "cliente_id": "1",
+                      "rtn_cliente": "08011999123456",
+                      "cliente": {
+                        "id": "1",
+                        "rtn": "08011999123456",
+                        "nombre": "Cliente Demo",
+                        "telefono": "9999-0000",
+                        "direccion": "Barrio Centro",
+                        "created_at": "2026-06-03T15:08:03.840Z",
+                        "activo": true
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Factura"
+        ]
+      },
+      "post": {
+        "description": "Crea una factura. Opcionalmente recibe un arreglo de productos (id + cantidad); el nombre, precio e isv de cada producto se copian desde el catálogo al momento de facturar.",
+        "operationId": "FacturaController_generateFactura",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFacturaDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Se creo y se retorno la factura",
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "id": "1",
+                    "numero_factura": "001-001-01-00000001",
+                    "cai_id": "2c5b5e0a-52f8-4a1a-9a5d-7c0c5b9f87bb",
+                    "fecha_emision": "2026-06-03T15:08:03.852Z",
+                    "num_compra_exenta": "",
+                    "num_exonerado": "",
+                    "numero_sag": "",
+                    "sucursal_id": "1",
+                    "autor_id": "1",
+                    "cliente_id": "1",
+                    "rtn_cliente": "05019018021588",
+                    "productos": [
+                      {
+                        "id": "1",
+                        "producto_id": "5",
+                        "factura_id": "1",
+                        "cantidad": 2,
+                        "nombre": "Producto Demo",
+                        "precio": "150.00",
+                        "isv": "isv15"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error en los datos de la Factura",
+            "content": {
+              "application/json": {
+                "example": {
+                  "statusCode": 400,
+                  "message": "Invalid data provided for the receipt.",
+                  "error": "Bad Request"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Uno o más productos no fueron encontrados",
+            "content": {
+              "application/json": {
+                "example": {
+                  "statusCode": 404,
+                  "message": "Productos no encontrados: 99",
+                  "error": "Not Found"
+                }
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Factura"
+        ]
+      }
+    },
+    "/facturas/{id}": {
+      "get": {
+        "description": "Retrieves a single factura with the given ID (not the billing number)",
+        "operationId": "FacturaController_getFacturaById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Found and retrieved a receipt successfully",
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "id": "1",
+                    "numero_factura": "001-001-01-00000001",
+                    "cai_id": "2c5b5e0a-52f8-4a1a-9a5d-7c0c5b9f87bb",
+                    "fecha_emision": "2026-06-03T15:08:03.852Z",
+                    "num_compra_exenta": null,
+                    "num_exonerado": null,
+                    "numero_sag": null,
+                    "sucursal_id": "1",
+                    "autor_id": "1",
+                    "cliente_id": "1",
+                    "rtn_cliente": "08011999123456",
+                    "cliente": {
+                      "id": "1",
+                      "rtn": "08011999123456",
+                      "nombre": "Cliente Demo",
+                      "telefono": "9999-0000",
+                      "direccion": "Barrio Centro",
+                      "created_at": "2026-06-03T15:08:03.840Z",
+                      "activo": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Receipt ID not found"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Factura"
+        ]
+      }
+    },
+    "/facturas/{id}/exportar": {
+      "get": {
+        "operationId": "FacturaController_exportFactura",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Factura"
+        ]
+      }
+    },
+    "/products/{id}": {
+      "put": {
+        "description": "Actualiza un producto",
+        "operationId": "ProductsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProductDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Producto actualizado correctamente",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "1",
+                  "imagen_id": null,
+                  "tipo_producto_id": "1",
+                  "proveedor_id": "1",
+                  "codigo": "PROD-001",
+                  "nombre": "Filtro de Aceite Premium",
+                  "precio": "199.99",
+                  "isv": "isv15",
+                  "activo": true
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Producto con el ID especificado no encontrado"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Products"
+        ]
+      },
+      "get": {
+        "description": "Retorna un producto por su ID",
+        "operationId": "ProductsController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Producto obtenido correctamente",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "1",
+                  "imagen_id": null,
+                  "tipo_producto_id": "1",
+                  "proveedor_id": "1",
+                  "codigo": "PROD-001",
+                  "nombre": "Filtro de Aceite Premium",
+                  "precio": "199.99",
+                  "isv": "isv15",
+                  "activo": true
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Producto con el ID especificado no encontrado",
+            "content": {
+              "application/json": {
+                "example": {
+                  "statusCode": 404,
+                  "message": "Product with ID 1 not found",
+                  "error": "Not Found"
+                }
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Products"
+        ]
+      },
+      "delete": {
+        "description": "Elimina un producto de forma lógica",
+        "operationId": "ProductsController_delete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Producto eliminado correctamente",
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Product deleted successfully"
+                }
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Products"
+        ]
+      }
+    },
+    "/products": {
+      "get": {
+        "description": "Retorna todos los productos",
+        "operationId": "ProductsController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Productos obtenidos correctamente",
+            "content": {
+              "application/json": {
+                "example": [
+                  {
+                    "id": "1",
+                    "imagen_id": null,
+                    "tipo_producto_id": "1",
+                    "proveedor_id": "1",
+                    "codigo": "PROD-001",
+                    "nombre": "Filtro de Aceite Premium",
+                    "precio": "199.99",
+                    "isv": "isv15",
+                    "activo": true
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Products"
+        ]
+      },
+      "post": {
+        "description": "Crea un nuevo producto",
+        "operationId": "ProductsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProductDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Producto creado correctamente",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "1",
+                  "imagen_id": null,
+                  "tipo_producto_id": "1",
+                  "proveedor_id": "1",
+                  "codigo": "PROD-001",
+                  "nombre": "Filtro de Aceite Premium",
+                  "precio": "199.99",
+                  "isv": "isv15",
+                  "activo": true
+                }
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Products"
+        ]
+      }
+    },
+    "/products/{productId}/image": {
+      "post": {
+        "description": "Sube o actualiza la imagen de un producto",
+        "operationId": "ProductsController_uploadImage",
+        "parameters": [
+          {
+            "name": "productId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "image": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Archivo de imagen a subir"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Imagen subida o actualizada correctamente",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "1",
+                  "key": "product-1.jpg",
+                  "filename": "product-1.jpg",
+                  "mime_type": "image/jpeg"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autorizado para subir imágenes",
+            "content": {
+              "application/json": {
+                "example": {
+                  "statusCode": 401,
+                  "message": "Unauthorized",
+                  "error": "Unauthorized"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Producto no encontrado o error en la solicitud",
+            "content": {
+              "application/json": {
+                "example": {
+                  "statusCode": 400,
+                  "message": "Product not found",
+                  "error": "Bad Request"
+                }
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Products"
+        ]
+      },
+      "get": {
+        "description": "Obtiene la URL de la imagen de un producto",
+        "operationId": "ProductsController_getImageUrl",
+        "parameters": [
+          {
+            "name": "productId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "URL de la imagen obtenida correctamente",
+            "content": {
+              "application/json": {
+                "example": {
+                  "url": "https://s3.amazonaws.com/your-bucket/product-1.jpg"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Producto no encontrado o sin imagen",
+            "content": {
+              "application/json": {
+                "example": {
+                  "statusCode": 404,
+                  "message": "Product not found or does not have an image",
+                  "error": "Not Found"
+                }
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Products"
+        ]
+      }
+    },
+    "/reportes/clientes-frecuentes": {
+      "get": {
+        "description": "Obtiene un listado de los clientes más frecuentes en un período determinado.",
+        "operationId": "ReportesController_clientesFrecuentes",
+        "parameters": [
+          {
+            "name": "desde",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "hasta",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Listado de clientes frecuentes obtenido exitosamente",
+            "content": {
+              "application/json": {
+                "example": [
+                  {
+                    "id": "1",
+                    "nombre": "Juan Pérez",
+                    "total_compras": 5
+                  },
+                  {
+                    "id": "2",
+                    "nombre": "María Gómez",
+                    "total_compras": 3
+                  }
+                ]
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros de fecha inválidos o faltantes",
+            "content": {
+              "application/json": {
+                "example": {
+                  "statusCode": 400,
+                  "message": "Los parámetros 'desde' y 'hasta' son obligatorios y deben ser fechas válidas (YYYY-MM-DD)",
+                  "error": "Bad Request"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Acceso denegado por falta de privilegios de administrador",
+            "content": {
+              "application/json": {
+                "example": {
+                  "statusCode": 403,
+                  "message": "Se requieren privilegios de administrador",
+                  "error": "Forbidden"
+                }
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Reportes"
+        ]
+      }
+    },
+    "/reportes/ventas-por-periodo": {
+      "get": {
+        "description": "Obtiene un reporte de ventas para un período determinado.",
+        "operationId": "ReportesController_ventasPorPeriodo",
+        "parameters": [
+          {
+            "name": "desde",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "hasta",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reporte de ventas obtenido exitosamente",
+            "content": {
+              "application/json": {
+                "example": {
+                  "total_ventas": 100,
+                  "monto_total": 5000
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros de fecha inválidos o faltantes",
+            "content": {
+              "application/json": {
+                "example": {
+                  "statusCode": 400,
+                  "message": "Los parámetros 'desde' y 'hasta' son obligatorios y deben ser fechas válidas (YYYY-MM-DD)",
+                  "error": "Bad Request"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Acceso denegado por falta de privilegios de administrador",
+            "content": {
+              "application/json": {
+                "example": {
+                  "statusCode": 403,
+                  "message": "Se requieren privilegios de administrador",
+                  "error": "Forbidden"
+                }
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Reportes"
+        ]
+      }
+    },
+    "/reportes/ventas-sucursal": {
+      "get": {
+        "description": "Obtiene un reporte de ventas por sucursal para un período determinado.",
+        "operationId": "ReportesController_ventasPorSucursal",
+        "parameters": [
+          {
+            "name": "desde",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "hasta",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reporte de ventas por sucursal obtenido exitosamente",
+            "content": {
+              "application/json": {
+                "example": [
+                  {
+                    "sucursal_id": "1",
+                    "sucursal_nombre": "Sucursal A",
+                    "total_ventas": 50,
+                    "monto_total": 2500
+                  },
+                  {
+                    "sucursal_id": "2",
+                    "sucursal_nombre": "Sucursal B",
+                    "total_ventas": 50,
+                    "monto_total": 2500
+                  }
+                ]
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros de fecha inválidos o faltantes",
+            "content": {
+              "application/json": {
+                "example": {
+                  "statusCode": 400,
+                  "message": "Los parámetros 'desde' y 'hasta' son obligatorios y deben ser fechas válidas (YYYY-MM-DD)",
+                  "error": "Bad Request"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Acceso denegado por falta de privilegios de administrador",
+            "content": {
+              "application/json": {
+                "example": {
+                  "statusCode": 403,
+                  "message": "Se requieren privilegios de administrador",
+                  "error": "Forbidden"
+                }
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Reportes"
+        ]
+      }
+    },
+    "/reportes/productos-mas-vendidos": {
+      "get": {
+        "description": "Obtiene un listado de los productos más vendidos en un período determinado.",
+        "operationId": "ReportesController_productosMasVendidos",
+        "parameters": [
+          {
+            "name": "desde",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "hasta",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Listado de productos más vendidos obtenido exitosamente",
+            "content": {
+              "application/json": {
+                "example": [
+                  {
+                    "id": "1",
+                    "nombre": "Producto A",
+                    "total_vendido": 100
+                  },
+                  {
+                    "id": "2",
+                    "nombre": "Producto B",
+                    "total_vendido": 80
+                  }
+                ]
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros de fecha inválidos o faltantes",
+            "content": {
+              "application/json": {
+                "example": {
+                  "statusCode": 400,
+                  "message": "Los parámetros 'desde' y 'hasta' son obligatorios y deben ser fechas válidas (YYYY-MM-DD)",
+                  "error": "Bad Request"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Acceso denegado por falta de privilegios de administrador",
+            "content": {
+              "application/json": {
+                "example": {
+                  "statusCode": 403,
+                  "message": "Se requieren privilegios de administrador",
+                  "error": "Forbidden"
+                }
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Reportes"
+        ]
+      }
+    },
+    "/reportes": {
+      "get": {
+        "description": "Obtiene un resumen general de todos los reportes en un período",
+        "operationId": "ReportesController_resumenGeneral",
+        "parameters": [
+          {
+            "name": "desde",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "hasta",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resumen general obtenido correctamente",
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "clientes_frecuentes": [
+                      {
+                        "cliente_id": "1",
+                        "nombre": "Juan Pérez",
+                        "rtn": "08011999123456",
+                        "total_facturas": 5,
+                        "monto_total": "1250.00"
+                      }
+                    ],
+                    "ventas_por_periodo": {
+                      "facturas": [],
+                      "resumen": {
+                        "total_facturas": 10,
+                        "monto_bruto": "5000.00"
+                      }
+                    },
+                    "productos_mas_vendidos": [
+                      {
+                        "nombre": "Aceite Motor 10W-40",
+                        "cantidad_total": 15
+                      }
+                    ]
+                  },
+                  "message": "Resumen general de reportes"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros inválidos",
+            "content": {
+              "application/json": {
+                "example": {
+                  "statusCode": 400,
+                  "message": "Los parámetros 'desde' y 'hasta' son obligatorios"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Se requieren privilegios de administrador",
+            "content": {
+              "application/json": {
+                "example": {
+                  "statusCode": 403,
+                  "message": "Se requieren privilegios de administrador"
+                }
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Reportes"
+        ]
+      }
+    },
+    "/cai": {
+      "post": {
+        "description": "Crea un nuevo registro de CAI en el sistema.",
+        "operationId": "CaiController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCaiDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "CAI creado exitosamente.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "550e8400-e29b-41d4-a716-446655440000",
+                  "descripcion": "CAI Principal 2026",
+                  "codigo_cai": "69904E-2E3C67-E24D9C-9C5D23-6A1B2C-3D",
+                  "fecha_vencimiento": "2026-12-31",
+                  "fecha_emision": "2026-01-01"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos de entrada inválidos.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "statusCode": 400,
+                  "message": [
+                    "descripcion should not be empty",
+                    "codigo_cai must be a string"
+                  ],
+                  "error": "Bad Request"
+                }
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Cai"
+        ]
+      },
+      "get": {
+        "description": "Obtiene una lista de todos los registros de CAI configurados.",
+        "operationId": "CaiController_findAllCai",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Lista de CAIs obtenida exitosamente.",
+            "content": {
+              "application/json": {
+                "example": [
+                  {
+                    "id": "550e8400-e29b-41d4-a716-446655440000",
+                    "descripcion": "CAI Principal 2026",
+                    "codigo_cai": "69904E-2E3C67-E24D9C-9C5D23-6A1B2C-3D",
+                    "fecha_vencimiento": "2026-12-31",
+                    "fecha_emision": "2026-01-01"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Cai"
+        ]
+      }
+    },
+    "/cai/{id}": {
+      "get": {
+        "description": "Obtiene los detalles de un registro de CAI específico por su ID.",
+        "operationId": "CaiController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detalles del CAI obtenidos exitosamente.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "550e8400-e29b-41d4-a716-446655440000",
+                  "descripcion": "CAI Principal 2026",
+                  "codigo_cai": "69904E-2E3C67-E24D9C-9C5D23-6A1B2C-3D",
+                  "fecha_vencimiento": "2026-12-31",
+                  "fecha_emision": "2026-01-01"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "CAI no encontrado.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "statusCode": 404,
+                  "message": "Cai with ID 550e8400... not found",
+                  "error": "Not Found"
+                }
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Cai"
+        ]
+      }
+    },
+    "/cai/rangos/list": {
+      "get": {
+        "description": "Obtiene los rangos autorizados de un CAI con soporte para filtros por estado.",
+        "operationId": "CaiController_findCaiRangos",
+        "parameters": [
+          {
+            "name": "estado",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDIENTE",
+                "ACTIVO"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de rangos obtenida exitosamente.",
+            "content": {
+              "application/json": {
+                "example": [
+                  {
+                    "id": "550e8400-e29b-41d4-a716-446655440000",
+                    "cai_id": "550e8400-e29b-41d4-a716-446655440001",
+                    "sucursal_id": 1,
+                    "establecimiento": "001",
+                    "punto_emision": "001",
+                    "tipo_documento": "01",
+                    "rango_inicio": 1,
+                    "rango_final": 100,
+                    "correlativo_actual": 50,
+                    "estado": "ACTIVO",
+                    "fecha_activacion": "2026-01-01T00:00:00Z",
+                    "fecha_cierre": null,
+                    "created_at": "2026-01-01T00:00:00Z",
+                    "updated_at": "2026-01-01T00:00:00Z"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Cai"
+        ]
+      }
+    },
+    "/cai/rangos": {
+      "post": {
+        "description": "Crea un nuevo rango de CAI en el sistema.",
+        "operationId": "CaiController_createRango",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCaiRangoDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Rango de CAI creado exitosamente.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "550e8400-e29b-41d4-a716-446655440000",
+                  "cai_id": "550e8400-e29b-41d4-a716-446655440000",
+                  "establecimiento": "001",
+                  "punto_emision": "001",
+                  "tipo_documento": "01",
+                  "rango_inicio": 1,
+                  "rango_final": 100,
+                  "correlativo_actual": 50
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos de entrada inválidos.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "statusCode": 400,
+                  "message": [
+                    "cai_id should not be empty",
+                    "establecimiento should not be empty",
+                    "punto_emision should not be empty",
+                    "tipo_documento should not be empty",
+                    "rango_inicio should not be empty",
+                    "rango_final should not be empty"
+                  ],
+                  "error": "Bad Request"
+                }
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Cai"
+        ]
+      }
+    },
+    "/compras": {
+      "post": {
+        "description": "Registra una nueva compra de suministros o productos en una sucursal.",
+        "operationId": "ComprasController_addCompra",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCompraDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Compra registrada exitosamente.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "1",
+                  "sucursal_id": "1",
+                  "producto_id": "1",
+                  "usuario_id": "1",
+                  "cantidad": 10,
+                  "precio": "150.50",
+                  "fecha": "2026-06-04T12:00:00Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error en los datos de la compra.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "statusCode": 400,
+                  "message": "Invalid data provided for the purchase.",
+                  "error": "Bad Request"
+                }
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Compras"
+        ]
+      }
+    },
+    "/inventario": {
+      "get": {
+        "description": "Consulta el stock disponible de un producto en una sucursal específica.",
+        "operationId": "InventarioController_getInventario",
+        "parameters": [
+          {
+            "name": "sucursal",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "producto",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Información de inventario obtenida.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "sucursal_id": "1",
+                  "producto_id": "1",
+                  "cantidad": 50
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autorizado.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "statusCode": 401,
+                  "message": "Unauthorized"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Sucursal o producto no encontrados.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "statusCode": 404,
+                  "message": "Inventory record not found.",
+                  "error": "Not Found"
+                }
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Inventario"
+        ]
+      },
+      "patch": {
+        "description": "Actualiza el inventario restando la cantidad especificada de un producto.",
+        "operationId": "InventarioController_updateInventario",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecreaseInventarioDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Inventario actualizado correctamente.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Inventory decreased successfully.",
+                  "newQuantity": 45
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Stock insuficiente o datos inválidos.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "statusCode": 400,
+                  "message": "Insufficient stock.",
+                  "error": "Bad Request"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autorizado.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "statusCode": 401,
+                  "message": "Unauthorized"
+                }
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Inventario"
+        ]
+      }
+    },
+    "/resenas/{productId}": {
+      "get": {
+        "description": "Obtiene todas las reseñas de un producto específico, ordenadas de la más reciente a la más antigua.",
+        "operationId": "ResenasController_findAll",
+        "parameters": [
+          {
+            "name": "productId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de reseñas obtenida exitosamente.",
+            "content": {
+              "application/json": {
+                "example": [
+                  {
+                    "id": "2",
+                    "producto_id": "1",
+                    "correo": "user2@example.com",
+                    "cuerpo": "Muy buen producto, lo recomiendo.",
+                    "valor": 5,
+                    "created_at": "2026-06-04T15:30:00Z"
+                  },
+                  {
+                    "id": "1",
+                    "producto_id": "1",
+                    "correo": "user1@example.com",
+                    "cuerpo": "Cumple con su función.",
+                    "valor": 4,
+                    "created_at": "2026-06-04T14:00:00Z"
+                  }
+                ]
+              }
+            }
+          },
+          "404": {
+            "description": "Producto no encontrado.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "statusCode": 404,
+                  "message": "Producto no encontrado",
+                  "error": "Not Found"
+                }
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Resenas"
+        ]
+      },
+      "post": {
+        "description": "Crear una nueva reseña para un producto",
+        "operationId": "ResenasController_create",
+        "parameters": [
+          {
+            "name": "productId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateResenaDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Reseña creada correctamente",
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "id": "1",
+                    "email": "user@example.com",
+                    "comentario": "Excelente producto",
+                    "calificacion": 5,
+                    "createdAt": "2026-06-04T12:00:00Z"
+                  },
+                  "message": "Reseña creada correctamente"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos de entrada inválidos",
+            "content": {
+              "application/json": {
+                "example": {
+                  "statusCode": 400,
+                  "message": [
+                    "email must be an email"
+                  ],
+                  "error": "Bad Request"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Producto no encontrado",
+            "content": {
+              "application/json": {
+                "example": {
+                  "statusCode": 404,
+                  "message": "Product not found",
+                  "error": "Not Found"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor",
+            "content": {
+              "application/json": {
+                "example": {
+                  "statusCode": 500,
+                  "message": "Internal server error"
+                }
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Resenas"
+        ]
+      }
+    },
+    "/resenas/{resenaId}": {
+      "delete": {
+        "description": "Eliminar una reseña (solo administrador)",
+        "operationId": "ResenasController_delete",
+        "parameters": [
+          {
+            "name": "resenaId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reseña eliminada correctamente",
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Reseña eliminada correctamente"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Se requieren privilegios de administrador",
+            "content": {
+              "application/json": {
+                "example": {
+                  "statusCode": 403,
+                  "message": "Se requieren privilegios de administrador"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "La reseña no existe",
+            "content": {
+              "application/json": {
+                "example": {
+                  "statusCode": 404,
+                  "message": "La reseña no existe"
+                }
+              }
+            }
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Resenas"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Backend Turbo Auto API",
+    "description": "Documentación de la API",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
+      }
+    },
+    "schemas": {
+      "AuthCredentialsDto": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "username",
+          "password"
+        ]
+      },
+      "CreateAuthUserDto": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "admin": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "required": [
+          "displayName",
+          "username",
+          "password",
+          "admin"
+        ]
+      },
+      "UpdateAuthUserDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateRedSocialDto": {
+        "type": "object",
+        "properties": {
+          "nombre": {
+            "type": "string"
+          },
+          "tipo": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "activo": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "nombre",
+          "tipo",
+          "url"
+        ]
+      },
+      "UpdateRedSocialDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateSucursalDto": {
+        "type": "object",
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "direccion": {
+            "type": "string",
+            "maxLength": 300
+          }
+        },
+        "required": [
+          "nombre",
+          "direccion"
+        ]
+      },
+      "UpdateSucursalDto": {
+        "type": "object",
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "direccion": {
+            "type": "string",
+            "maxLength": 300
+          }
+        }
+      },
+      "CreateClientDto": {
+        "type": "object",
+        "properties": {
+          "rtn": {
+            "type": "string",
+            "minLength": 14,
+            "maxLength": 14
+          },
+          "nombre": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 150
+          },
+          "telefono": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20
+          },
+          "direccion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "activo": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "nombre",
+          "activo"
+        ]
+      },
+      "UpdateClientDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "FacturaProductoDto": {
+        "type": "object",
+        "properties": {
+          "producto_id": {
+            "type": "string",
+            "description": "Id del producto a incluir",
+            "example": "5"
+          },
+          "cantidad": {
+            "type": "number",
+            "minimum": 1,
+            "description": "Cantidad del producto",
+            "example": 2
+          }
+        },
+        "required": [
+          "producto_id",
+          "cantidad"
+        ]
+      },
+      "FacturaServicioDto": {
+        "type": "object",
+        "properties": {
+          "descripcion": {
+            "type": "string",
+            "description": "Descripción del servicio",
+            "example": "Cambio de aceite"
+          },
+          "total": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Total del servicio",
+            "example": 350
+          },
+          "nota_interna": {
+            "type": "string",
+            "description": "Nota interna del servicio"
+          }
+        },
+        "required": [
+          "descripcion",
+          "total"
+        ]
+      },
+      "CreateFacturaDto": {
+        "type": "object",
+        "properties": {
+          "sucursal_id": {
+            "type": "string",
+            "description": "Id de la sucursal",
+            "example": "1"
+          },
+          "autor_id": {
+            "type": "string",
+            "description": "Id del autor (usuario)",
+            "example": "1"
+          },
+          "cliente_id": {
+            "type": "string",
+            "description": "Id del cliente",
+            "example": "1"
+          },
+          "rtn_cliente": {
+            "type": "string",
+            "minLength": 14,
+            "maxLength": 14,
+            "description": "RTN del cliente (14 caracteres)",
+            "example": "08011999123456"
+          },
+          "num_compra_exenta": {
+            "type": "string",
+            "description": "Número de compra exenta"
+          },
+          "num_exonerado": {
+            "type": "string",
+            "description": "Número de exonerado"
+          },
+          "numero_sag": {
+            "type": "string",
+            "description": "Número SAG"
+          },
+          "productos": {
+            "description": "Productos a incluir, cada uno con su id y cantidad",
+            "example": [
+              {
+                "producto_id": "5",
+                "cantidad": 2
+              }
+            ],
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FacturaProductoDto"
+            }
+          },
+          "servicios": {
+            "description": "Servicios a incluir en la factura",
+            "example": [
+              {
+                "descripcion": "Cambio de aceite",
+                "total": 350
+              }
+            ],
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FacturaServicioDto"
+            }
+          }
+        },
+        "required": [
+          "sucursal_id",
+          "autor_id"
+        ]
+      },
+      "UpdateProductDto": {
+        "type": "object",
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "nombre": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 150
+          },
+          "precio": {
+            "type": "number",
+            "minimum": 1
+          },
+          "isv": {
+            "type": "string"
+          },
+          "tipo_producto_id": {
+            "type": "number",
+            "minimum": 1
+          },
+          "imagen_id": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateProductDto": {
+        "type": "object",
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "nombre": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 150
+          },
+          "precio": {
+            "type": "number",
+            "minimum": 1
+          },
+          "isv": {
+            "type": "string"
+          },
+          "tipo_producto_id": {
+            "type": "number",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "codigo",
+          "nombre",
+          "precio",
+          "isv",
+          "tipo_producto_id"
+        ]
+      },
+      "CreateCaiDto": {
+        "type": "object",
+        "properties": {
+          "descripcion": {
+            "type": "string"
+          },
+          "codigo_cai": {
+            "type": "string"
+          },
+          "fecha_vencimiento": {
+            "type": "string"
+          },
+          "fecha_emision": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "descripcion",
+          "codigo_cai",
+          "fecha_vencimiento",
+          "fecha_emision"
+        ]
+      },
+      "CreateCaiRangoDto": {
+        "type": "object",
+        "properties": {
+          "cai_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sucursal_id": {
+            "type": "number",
+            "minimum": 1
+          },
+          "establecimiento": {
+            "type": "string",
+            "pattern": "^\\d{3}$"
+          },
+          "punto_emision": {
+            "type": "string",
+            "pattern": "^\\d{3}$"
+          },
+          "tipo_documento": {
+            "type": "string",
+            "pattern": "^\\d{2}$"
+          },
+          "rango_inicio": {
+            "type": "number",
+            "minimum": 0
+          },
+          "rango_final": {
+            "type": "number",
+            "minimum": 0
+          },
+          "correlativo_actual": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "cai_id",
+          "sucursal_id",
+          "establecimiento",
+          "punto_emision",
+          "tipo_documento",
+          "rango_inicio",
+          "rango_final"
+        ]
+      },
+      "CreateCompraDto": {
+        "type": "object",
+        "properties": {
+          "sucursal": {
+            "type": "string"
+          },
+          "producto": {
+            "type": "string"
+          },
+          "usuario": {
+            "type": "string"
+          },
+          "cantidad": {
+            "type": "number",
+            "minimum": 1
+          },
+          "precio": {
+            "type": "number"
+          },
+          "fecha": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sucursal",
+          "cantidad",
+          "precio",
+          "fecha"
+        ]
+      },
+      "DecreaseInventarioDto": {
+        "type": "object",
+        "properties": {
+          "sucursal": {
+            "type": "string"
+          },
+          "producto": {
+            "type": "string"
+          },
+          "cantidad": {
+            "type": "number",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "sucursal",
+          "producto",
+          "cantidad"
+        ]
+      },
+      "CreateResenaDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Correo electrónico del usuario",
+            "example": "user@example.com"
+          },
+          "comentario": {
+            "type": "string",
+            "maxLength": 700,
+            "description": "Comentario sobre el producto",
+            "example": "Excelente producto, muy satisfecho con la compra."
+          },
+          "calificacion": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 5,
+            "description": "Calificación del producto",
+            "example": 5
+          }
+        },
+        "required": [
+          "email",
+          "comentario",
+          "calificacion"
+        ]
+      }
+    }
+  }
+}
