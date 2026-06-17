@@ -11,6 +11,7 @@ import Sucursales from './components/Sucursales.vue';
 import Configuracion from './components/Configuracion.vue';
 import Storefront from './components/Storefront.vue';
 import type { Page, SucursalBase } from './types';
+import { hasToken, logout } from './api';
 
 const sucursalesIniciales: SucursalBase[] = [
   {
@@ -44,7 +45,7 @@ const sucursalesIniciales: SucursalBase[] = [
 export default defineComponent({
   name: 'App',
   setup() {
-    const autenticado = ref(false);
+    const autenticado = ref(hasToken());
     const paginaActual = ref<Page>('panel');
     const mostrarLogin = ref(false);
     const sucursales = ref<SucursalBase[]>(sucursalesIniciales);
@@ -80,7 +81,11 @@ export default defineComponent({
         <Layout
           currentPage={paginaActual.value}
           onNavigate={(p: Page) => (paginaActual.value = p)}
-          onLogout={() => { autenticado.value = false; paginaActual.value = 'panel'; }}
+          onLogout={() => {
+            logout();
+            autenticado.value = false;
+            paginaActual.value = 'panel';
+          }}
         >
           {renderPagina()}
         </Layout>

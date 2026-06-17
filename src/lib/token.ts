@@ -43,5 +43,32 @@ export function clearToken(): void {
 }
 
 export function hasToken(): boolean {
-  return getToken() !== null;
+  const token = getToken();
+  if (!token) return false;
+  try {
+    const payload = token.split('.')[1];
+    const decoded = JSON.parse(atob(payload));
+    if (decoded.exp) {
+      const isExpired = Date.now() >= decoded.exp * 1000;
+      if (isExpired) {
+        clearToken();
+        return false;
+      }
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function getUserIdFromToken(): string {
+  const token = getToken();
+  if (!token) return '1';
+  try {
+    const payload = token.split('.')[1];
+    const decoded = JSON.parse(atob(payload));
+    return String(decoded.id ?? decoded.sub ?? '1');
+  } catch {
+    return '1';
+  }
 }

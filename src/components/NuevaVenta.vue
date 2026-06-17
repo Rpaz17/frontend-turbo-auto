@@ -9,6 +9,7 @@ import { useProductos, formatPrecio } from '../composables/useProductos';
 import { useClientes } from '../composables/useClientes';
 import { useSucursales } from '../composables/useSucursales';
 import type { Product, Client, Sucursal } from '../api/schemas';
+import { generateFactura, exportFactura, getUserIdFromToken } from '../api';
 
 interface LineaProducto {
   id: number;
@@ -123,6 +124,72 @@ export default defineComponent({
 
     const eliminarServicio = (id: number) => {
       servicios.value = servicios.value.filter(s => s.id !== id);
+    };
+
+    const generando = ref(false);
+
+    const limpiarFormulario = () => {
+      clienteId.value = "";
+      sucursalId.value = "";
+      lineas.value = [];
+      servicios.value = [];
+      descServicio.value = "";
+      precioServicio.value = null;
+      tipoPago.value = "contado";
+    };
+
+    const handleGenerarFactura = async () => {
+      if (!sucursalId.value) {
+        alert("Por favor, seleccione una sucursal.");
+        return;
+      }
+      if (!clienteId.value) {
+        alert("Por favor, seleccione un cliente.");
+        return;
+      }
+      if (lineas.value.length === 0 && servicios.value.length === 0) {
+        alert("Por favor, agregue al menos un producto o servicio.");
+        return;
+      }
+
+      generando.value = true;
+      try {
+        const payload = {
+          sucursal_id: sucursalId.value,
+          cliente_id: clienteId.value,
+          autor_id: getUserIdFromToken(),
+          productos: lineas.value.map(l => ({
+            producto_id: l.producto_id,
+            cantidad: l.cantidad
+          })),
+          servicios: servicios.value.map(s => ({
+            descripcion: s.descripcion,
+            total: s.total
+          }))
+        };
+
+        const res = await generateFactura(payload);
+        const facturaId = res?.id;
+
+        if (facturaId) {
+          const html = await exportFactura(facturaId);
+          const newWindow = window.open();
+          if (newWindow) {
+            newWindow.document.write(html);
+            newWindow.document.close();
+          } else {
+            alert("Factura generada con éxito, pero la ventana emergente fue bloqueada. Por favor, permita los pop-ups.");
+          }
+          limpiarFormulario();
+        } else {
+          alert("Error: No se recibió el ID de la factura generada.");
+        }
+      } catch (err: any) {
+        console.error("Error al generar factura:", err);
+        alert(`Ocurrió un error al generar la factura: ${err.message || err}`);
+      } finally {
+        generando.value = false;
+      }
     };
 
     const sucursalSeleccionada = computed(() => 
@@ -670,49 +737,31 @@ export default defineComponent({
           {/* Acciones */}
           <div class="space-y-2.5">
             <button
+              onClick={handleGenerarFactura}
+              disabled={generando.value}
               class="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all shadow-md"
               style={{
-                background: "linear-gradient(135deg, #F87171, #FB923C)",
+                background: generando.value
+                  ? "#94A3B8"
+                  : "linear-gradient(135deg, #0F172A, #1E3A5F)",
                 color: "#fff",
-                boxShadow: "0 4px 14px rgba(248,113,113,0.35)",
+                boxShadow: generando.value ? "none" : "0 4px 14px rgba(15,23,42,0.30)",
+                cursor: generando.value ? "not-allowed" : "pointer",
               }}
             >
-              <Save size={15} /> Guardar venta
+              {generando.value ? (
+                <>
+                  <Loader2 class="animate-spin" size={15} /> Generando...
+                </>
+              ) : (
+                <>
+                  <FileText size={15} /> Generar factura
+                </>
+              )}
             </button>
             <button
-              class="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all shadow-md"
-              style={{
-                background: "linear-gradient(135deg, #0F172A, #1E3A5F)",
-                color: "#fff",
-                boxShadow: "0 4px 14px rgba(15,23,42,0.30)",
-              }}
-            >
-              <FileText size={15} /> Generar factura
-            </button>
-            <div class="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => setVistaPrevia(!vistaPrevia.value)}
-                class="flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all"
-                style={{
-                  background: "#EFF6FF",
-                  color: "#1D4ED8",
-                  border: "1px solid #BFDBFE",
-                }}
-              >
-                <Eye size={14} /> Vista previa
-              </button>
-              <button
-                class="flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all"
-                style={{
-                  background: "#F8FAFC",
-                  color: "#374151",
-                  border: "1px solid #E2E8F0",
-                }}
-              >
-                <Printer size={14} /> Imprimir
-              </button>
-            </div>
-            <button
+              onClick={limpiarFormulario}
+              disabled={generando.value}
               class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all"
               style={{
                 background: "#FEF2F2",
@@ -723,147 +772,6 @@ export default defineComponent({
               <X size={14} /> Cancelar
             </button>
           </div>
-
-          {/* Vista previa de factura */}
-          {vistaPrevia.value && (
-            <div
-              class="rounded-2xl overflow-hidden shadow-sm"
-              style={{ border: "1px solid #E2E8F0" }}
-            >
-              {/* Header factura */}
-              <div
-                class="px-5 py-4 text-center"
-                style={{ background: "linear-gradient(135deg, #0F172A, #1E3A5F)" }}
-              >
-                <div class="font-bold text-base" style={{ color: "#fff" }}>
-                  Turbo Auto F&M 504
-                </div>
-                <div class="text-xs mt-0.5" style={{ color: "#7DD3FC" }}>
-                  RTN: {caiRtn}
-                </div>
-                <div
-                  class="text-xs font-extrabold mt-1 tracking-widest"
-                  style={{ color: "#38BDF8" }}
-                >
-                  FACTURA FISCAL
-                </div>
-                <div class="text-xs mt-0.5" style={{ color: "#94A3B8" }}>
-                  No.: {caiFactura}
-                </div>
-              </div>
-
-              {/* Datos CAI en previa */}
-              <div
-                class="px-5 py-3"
-                style={{ background: "#EFF6FF", borderBottom: "1px dashed #BFDBFE" }}
-              >
-                <p class="text-xs font-bold mb-1" style={{ color: "#1E3A5F" }}>
-                  Datos fiscales — CAI
-                </p>
-                <p class="text-xs font-mono break-all" style={{ color: "#1D4ED8" }}>
-                  {caiNumero}
-                </p>
-                <div class="flex gap-4 mt-1">
-                  <span class="text-xs" style={{ color: "#64748B" }}>
-                    Desde: <span class="font-mono" style={{ color: "#0369A1" }}>{caiRangoInicio}</span>
-                  </span>
-                  <span class="text-xs" style={{ color: "#64748B" }}>
-                    Hasta: <span class="font-mono" style={{ color: "#0369A1" }}>{caiRangoFin}</span>
-                  </span>
-                </div>
-                <p class="text-xs mt-1" style={{ color: "#64748B" }}>
-                  Límite de emisión:{" "}
-                  <span class="font-semibold" style={{ color: "#0369A1" }}>
-                    {caiFecha}
-                  </span>{" "}
-                  · Sucursal:{" "}
-                  <span class="font-semibold" style={{ color: "#0369A1" }}>
-                    {sucursalSeleccionada.value?.nombre ?? "No seleccionada"}
-                  </span>
-                </p>
-              </div>
-
-              <div class="px-5 py-4" style={{ background: "#fff" }}>
-                <div class="space-y-1 text-xs mb-3">
-                  <div class="flex justify-between">
-                    <span style={{ color: "#64748B" }}>Fecha:</span>
-                    <span style={{ color: "#374151" }}>01/06/2024</span>
-                  </div>
-                  <div class="flex justify-between">
-                    <span style={{ color: "#64748B" }}>Cliente:</span>
-                    <span style={{ color: "#374151" }}>
-                      {clienteSeleccionado?.nombre ?? "Contado"}
-                    </span>
-                  </div>
-                  <div class="flex justify-between">
-                    <span style={{ color: "#64748B" }}>Tipo:</span>
-                    <span
-                      class="font-semibold capitalize"
-                      style={{
-                        color: tipoPago.value === "contado" ? "#15803D" : "#C2410C",
-                      }}
-                    >
-                      {tipoPago.value}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Productos */}
-                {lineas.value.length > 0 && (
-                  <>
-                    <p class="text-xs font-bold mb-1.5 mt-3" style={{ color: "#0F172A" }}>
-                      Productos
-                    </p>
-                    {lineas.value.map((l) => (
-                      <div
-                        key={l.id}
-                        class="flex justify-between text-xs py-1"
-                        style={{ borderBottom: "1px solid #F8FAFC" }}
-                      >
-                        <span style={{ color: "#374151" }}>
-                          {l.nombre} x{l.cantidad}
-                        </span>
-                        <span style={{ color: "#0F172A", fontWeight: 600 }}>
-                          {fmt(l.cantidad * l.precio * (1 - l.descuento / 100))}
-                        </span>
-                      </div>
-                    ))}
-                  </>
-                )}
-
-                {/* Servicios */}
-                {servicios.value.length > 0 && (
-                  <>
-                    <p class="text-xs font-bold mb-1.5 mt-3 flex items-center gap-1.5" style={{ color: "#C2410C" }}>
-                      <Wrench size={12} /> Servicios y mano de obra
-                    </p>
-                    {servicios.value.map((s) => (
-                      <div
-                        key={s.id}
-                        class="flex justify-between text-xs py-1"
-                        style={{ borderBottom: "1px solid #FFF7ED" }}
-                      >
-                        <span style={{ color: "#374151" }}>
-                          {s.descripcion}
-                        </span>
-                        <span style={{ color: "#C2410C", fontWeight: 600 }}>
-                          {fmt(s.total)}
-                        </span>
-                      </div>
-                    ))}
-                  </>
-                )}
-
-                <div
-                  class="pt-3 mt-2 flex justify-between font-bold"
-                  style={{ borderTop: "2px dashed #E2E8F0" }}
-                >
-                  <span style={{ color: "#0F172A" }}>TOTAL</span>
-                  <span style={{ color: "#F87171" }}>{fmt(t.value.total)}</span>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

@@ -1,12 +1,16 @@
 import { request } from '../lib/http';
 import {
   facturaSchema,
-  facturaResponseSchema,
   createFacturaDtoSchema,
   type Factura,
   type CreateFacturaDto,
 } from './schemas';
 import { z } from 'zod';
+
+// GET devuelve { data: [...] }
+const getFacturasResponseSchema = z.object({
+  data: z.union([facturaSchema, z.array(facturaSchema)]),
+});
 
 /** GET /facturas */
 export async function getFacturas(params?: {
@@ -14,16 +18,16 @@ export async function getFacturas(params?: {
   fecha?: string;
   numero?: string;
 }): Promise<Factura[]> {
-  const res = await request('/facturas', facturaResponseSchema, {
+  const res = await request('/facturas', getFacturasResponseSchema, {
     query: params,
     auth: true,
   });
   return Array.isArray(res.data) ? res.data : [res.data];
 }
 
-/** POST /facturas */
-export function generateFactura(factura: CreateFacturaDto): Promise<any> {
-  return request('/facturas', facturaResponseSchema, {
+/** POST /facturas — devuelve la factura directamente (sin wrapper). */
+export function generateFactura(factura: CreateFacturaDto): Promise<Factura> {
+  return request('/facturas', facturaSchema, {
     method: 'POST',
     body: factura,
     auth: true,
@@ -31,11 +35,12 @@ export function generateFactura(factura: CreateFacturaDto): Promise<any> {
 }
 
 /** GET /facturas/{id} */
-export function getFacturaById(id: string): Promise<any> {
-  return request(`/facturas/${id}`, facturaResponseSchema, { auth: true });
+export function getFacturaById(id: string): Promise<Factura> {
+  return request(`/facturas/${id}`, facturaSchema, { auth: true });
 }
 
 /** GET /facturas/{id}/exportar */
 export function exportFactura(id: string): Promise<string> {
   return request(`/facturas/${id}/exportar`, z.string(), { auth: true });
 }
+

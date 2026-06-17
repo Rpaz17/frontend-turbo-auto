@@ -113,15 +113,18 @@ export const facturaProductoSchema = z.object({
   id: z.string(),
   producto_id: z.string(),
   factura_id: z.string(),
-  cantidad: z.number(),
+  cantidad: z.coerce.number(),
   nombre: z.string(),
   precio: z.string(),
-  isv: z.string(),
+  isv: z.string().nullable().optional(),
 });
 export const facturaServicioSchema = z.object({
+  id: z.string().optional(),
+  factura_id: z.string().optional(),
   descripcion: z.string(),
-  total: z.number(),
-  nota_interna: z.string().optional(),
+  // El backend devuelve total como string ("80"); coerce lo convierte a number.
+  total: z.coerce.number(),
+  nota_interna: z.string().nullable().optional(),
 });
 export type FacturaServicio = z.infer<typeof facturaServicioSchema>;
 
@@ -136,22 +139,27 @@ export const facturaSchema = z.object({
   num_exonerado: z.string().nullable().optional(),
   numero_sag: z.string().nullable().optional(),
   sucursal_id: z.string(),
-  autor_id: z.string(),
+  autor_id: z.string().nullable().optional(),
   cliente_id: z.string(),
-  rtn_cliente: z.string(),
+  // El backend devuelve null cuando la factura es de contado.
+  rtn_cliente: z.string().nullable().optional(),
   cliente: clientSchema.optional(),
   productos: z.array(facturaProductoSchema).optional(),
   servicios: z.array(facturaServicioSchema).optional(),
 });
 export type Factura = z.infer<typeof facturaSchema>;
 
-export const facturaResponseSchema = z.object({
-  data: z.union([facturaSchema, z.array(facturaSchema)]),
-});
+export const facturaResponseSchema = z.union([
+  // POST /facturas devuelve la factura directamente (sin wrapper data).
+  facturaSchema,
+  // GET /facturas devuelve { data: [...] }.
+  z.object({ data: z.union([facturaSchema, z.array(facturaSchema)]) }),
+]);
 
 export const createFacturaDtoSchema = z.object({
   sucursal_id: z.string(),
   cliente_id: z.string(),
+  autor_id: z.string(),
   num_compra_exenta: z.string().optional(),
   num_exonerado: z.string().optional(),
   numero_sag: z.string().optional(),

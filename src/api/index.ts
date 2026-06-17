@@ -12,4 +12,4 @@ export * from './cai';
 export * from './ajustes';
 
 export { ApiError } from '../lib/http';
-export { getToken, hasToken, clearToken } from '../lib/token';
+export { getToken, hasToken, clearToken, getUserIdFromToken } from '../lib/token';
