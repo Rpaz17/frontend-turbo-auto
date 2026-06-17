@@ -1,15 +1,20 @@
 <script lang="tsx">
-import { defineComponent, ref, type PropType } from 'vue';
+import { defineComponent, ref, computed, onMounted } from 'vue';
 import {
   Search, Plus, Trash2, FileText, Printer, Eye, ChevronDown,
   User, Package, ShieldCheck, Lock, Save, X,
-  CreditCard, Banknote, Wrench,
+  CreditCard, Banknote, Wrench, Loader2, AlertCircle
 } from "lucide-vue-next";
+import { useProductos, formatPrecio } from '../composables/useProductos';
+import { useClientes } from '../composables/useClientes';
+import { useSucursales } from '../composables/useSucursales';
+import type { Product, Client, Sucursal } from '../api/schemas';
 
 interface LineaProducto {
   id: number;
   nombre: string;
   codigo: string;
+  producto_id: string;
   cantidad: number;
   precio: number;
   descuento: number;
@@ -26,15 +31,6 @@ interface LineaServicio {
   descuento: number;
 }
 
-const productosDisponibles = [
-  { id: "PRD-001", nombre: "Filtro de aceite 5W-30", precio: 85 },
-  { id: "PRD-002", nombre: "Pastillas freno Bosch DB1170", precio: 280 },
-  { id: "PRD-003", nombre: "Bujías NGK Platinum BKR5E", precio: 95 },
-  { id: "PRD-004", nombre: "Batería Willard 12V 60Ah", precio: 1250 },
-  { id: "PRD-005", nombre: "Aceite Motor Castrol GTX 20W-50", precio: 185 },
-  { id: "PRD-006", nombre: "Amortiguador Monroe 911264", precio: 950 },
-];
-
 const serviciosDisponibles = [
   { id: "SRV-001", descripcion: "Instalación de frenos completo", precio: 450 },
   { id: "SRV-002", descripcion: "Cambio de aceite y filtro", precio: 200 },
@@ -44,12 +40,6 @@ const serviciosDisponibles = [
   { id: "SRV-006", descripcion: "Instalación de batería", precio: 150 },
   { id: "SRV-007", descripcion: "Cambio de bujías", precio: 180 },
   { id: "SRV-008", descripcion: "Mano de obra general", precio: 250 },
-];
-
-const clientesDisponibles = [
-  { id: "CLI-001", nombre: "Roberto Mejía", rtn: "0801-1985-12345" },
-  { id: "CLI-002", nombre: "Constructora HN S.A.", rtn: "0501-2001-00892" },
-  { id: "CLI-003", nombre: "Taller Morales & Asociados", rtn: "0801-1979-65432" },
 ];
 
 const CAI_PREDETERMINADO = {
@@ -79,409 +69,157 @@ export default defineComponent({
   
   
   setup() {
-  
+    const { productos, loading: loadingProds } = useProductos();
+    const { clientes, load: loadClientes, loading: loadingClientes } = useClientes();
+    const { sucursales, load: loadSucursales } = useSucursales();
 
-  const cliente = ref("");
-  const setCliente = (next: any) => { cliente.value = typeof next === 'function' ? next(cliente.value) : next; };
-  const busqProd = ref("");
-  const setBusqProd = (next: any) => { busqProd.value = typeof next === 'function' ? next(busqProd.value) : next; };
-  const busqServ = ref("");
-  const setBusqServ = (next: any) => { busqServ.value = typeof next === 'function' ? next(busqServ.value) : next; };
-  const lineas = ref<LineaProducto[]>([]);
-  const setLineas = (next: any) => { lineas.value = typeof next === 'function' ? next(lineas.value) : next; };
-  const servicios = ref<LineaServicio[]>([]);
-  const setServicios = (next: any) => { servicios.value = typeof next === 'function' ? next(servicios.value) : next; };
-  const vistaPrevia = ref(false);
-  const setVistaPrevia = (next: any) => { vistaPrevia.value = typeof next === 'function' ? next(vistaPrevia.value) : next; };
-  const mostrarServicioPersonalizado = ref(false);
-  const setMostrarServicioPersonalizado = (next: any) => { mostrarServicioPersonalizado.value = typeof next === 'function' ? next(mostrarServicioPersonalizado.value) : next; };
-  const servicioPersonalizado = ref({ descripcion: "", precio: 0 });
-  const setServicioPersonalizado = (next: any) => { servicioPersonalizado.value = typeof next === 'function' ? next(servicioPersonalizado.value) : next; };
+    onMounted(() => {
+      loadClientes();
+      loadSucursales();
+    });
 
-  // CAI: siempre viene de configuración, es solo lectura en esta pantalla
-  const caiNumero = CAI_PREDETERMINADO.numero;
-  const caiRangoInicio = CAI_PREDETERMINADO.rangoInicio;
-  const caiRangoFin = CAI_PREDETERMINADO.rangoFin;
-  const caiFactura = CAI_PREDETERMINADO.facturaActual;
-  const caiFecha = CAI_PREDETERMINADO.fechaLimite;
-  const caiRtn = CAI_PREDETERMINADO.rtn;
-  const sucursal = ref("Sucursal Central");
-  const setSucursal = (next: any) => { sucursal.value = typeof next === 'function' ? next(sucursal.value) : next; };
-  const tipoPago = ref<"contado" | "credito">("contado");
-  const setTipoPago = (next: any) => { tipoPago.value = typeof next === 'function' ? next(tipoPago.value) : next; };
+    const clienteId = ref("");
+    const sucursalId = ref("");
+    const busqProd = ref("");
+    const busqServ = ref("");
+    const lineas = ref<LineaProducto[]>([]);
+    const servicios = ref<LineaServicio[]>([]);
+    const vistaPrevia = ref(false);
+    const mostrarServicioPersonalizado = ref(false);
+    const servicioPersonalizado = ref({ descripcion: "", precio: 0 });
+    const tipoPago = ref<"contado" | "credito">("contado");
 
-  const ISV15 = 0.15;
+    const caiNumero = CAI_PREDETERMINADO.numero;
+    const caiRangoInicio = CAI_PREDETERMINADO.rangoInicio;
+    const caiRangoFin = CAI_PREDETERMINADO.rangoFin;
+    const caiFactura = CAI_PREDETERMINADO.facturaActual;
+    const caiFecha = CAI_PREDETERMINADO.fechaLimite;
+    const caiRtn = CAI_PREDETERMINADO.rtn;
 
-  const agregarProducto = (p: typeof productosDisponibles[0]) => {
-    setLineas((prev) => [
-      ...prev,
-      {
+    const ISV15 = 0.15;
+
+    const agregarProducto = (p: Product) => {
+      lineas.value.push({
         id: lineaId++,
         nombre: p.nombre,
-        codigo: p.id,
+        codigo: p.codigo,
+        producto_id: p.id,
         cantidad: 1,
-        precio: p.precio,
+        precio: Number(p.precio),
         descuento: 0,
         exento: false,
         exonerado: false,
-      },
-    ]);
-    setBusqProd("");
-  };
+      });
+      busqProd.value = "";
+    };
 
-  const agregarServicio = (s: typeof serviciosDisponibles[0]) => {
-    setServicios((prev) => [
-      ...prev,
-      {
+    const agregarServicio = (s: any) => {
+      servicios.value.push({
         id: servicioId++,
         descripcion: s.descripcion,
         codigo: s.id,
         cantidad: 1,
         precio: s.precio,
         descuento: 0,
-      },
-    ]);
-    setBusqServ("");
-  };
+      });
+      busqServ.value = "";
+    };
 
-  const agregarServicioPersonalizado = () => {
-    if (!servicioPersonalizado.value.descripcion.trim() || servicioPersonalizado.value.precio <= 0) return;
-    setServicios((prev) => [
-      ...prev,
-      {
+    const agregarServicioPersonalizado = () => {
+      if (!servicioPersonalizado.value.descripcion.trim() || servicioPersonalizado.value.precio <= 0) return;
+      servicios.value.push({
         id: servicioId++,
         descripcion: servicioPersonalizado.value.descripcion,
         codigo: "SRV-CUSTOM",
         cantidad: 1,
         precio: servicioPersonalizado.value.precio,
         descuento: 0,
-      },
-    ]);
-    setServicioPersonalizado({ descripcion: "", precio: 0 });
-    setMostrarServicioPersonalizado(false);
-  };
+      });
+      servicioPersonalizado.value = { descripcion: "", precio: 0 };
+      mostrarServicioPersonalizado.value = false;
+    };
 
-  const actualizarLinea = (id: number, campo: keyof LineaProducto, valor: number | boolean) => {
-    setLineas((prev) => prev.map((l) => (l.id === id ? { ...l, [campo]: valor } : l)));
-  };
+    const actualizarLinea = (id: number, campo: keyof LineaProducto, valor: any) => {
+      const idx = lineas.value.findIndex(l => l.id === id);
+      if (idx !== -1) (lineas.value[idx] as any)[campo] = valor;
+    };
 
-  const actualizarServicio = (id: number, campo: keyof LineaServicio, valor: number) => {
-    setServicios((prev) => prev.map((s) => (s.id === id ? { ...s, [campo]: valor } : s)));
-  };
+    const actualizarServicio = (id: number, campo: keyof LineaServicio, valor: any) => {
+      const idx = servicios.value.findIndex(s => s.id === id);
+      if (idx !== -1) (servicios.value[idx] as any)[campo] = valor;
+    };
 
-  const eliminarLinea = (id: number) => setLineas((prev) => prev.filter((l) => l.id !== id));
+    const eliminarLinea = (id: number) => {
+      lineas.value = lineas.value.filter(l => l.id !== id);
+    };
 
-  const eliminarServicio = (id: number) => setServicios((prev) => prev.filter((s) => s.id !== id));
+    const eliminarServicio = (id: number) => {
+      servicios.value = servicios.value.filter(s => s.id !== id);
+    };
 
-  const calcTotales = () => {
-    let subtotal = 0, descuentos = 0, exento = 0, exonerado = 0, isv15 = 0, subtotalServicios = 0;
+    const sucursalSeleccionada = computed(() => 
+      sucursales.value.find((s) => s.id === sucursalId.value)
+    );
 
-    // Productos
-    lineas.value.forEach((l) => {
-      const bruto = l.cantidad * l.precio;
-      const desc = bruto * (l.descuento / 100);
-      const neto = bruto - desc;
-      subtotal += bruto;
-      descuentos += desc;
-      if (l.exento) exento += neto;
-      else if (l.exonerado) exonerado += neto;
-      else isv15 += neto * ISV15;
+    const t = computed(() => {
+      let subtotal = 0, descuentos = 0, exento = 0, exonerado = 0, isv15 = 0, subtotalServicios = 0;
+
+      // Productos
+      lineas.value.forEach((l) => {
+        const bruto = l.cantidad * l.precio;
+        const desc = bruto * (l.descuento / 100);
+        const neto = bruto - desc;
+        subtotal += bruto;
+        descuentos += desc;
+        if (l.exento) exento += neto;
+        else if (l.exonerado) exonerado += neto;
+        else isv15 += neto * ISV15;
+      });
+
+      // Servicios y mano de obra (gravados con ISV)
+      servicios.value.forEach((s) => {
+        const bruto = s.cantidad * s.precio;
+        const desc = bruto * (s.descuento / 100);
+        const neto = bruto - desc;
+        subtotalServicios += bruto;
+        descuentos += desc;
+        isv15 += neto * ISV15;
+      });
+
+      subtotal += subtotalServicios;
+      const total = subtotal - descuentos + isv15;
+      return { subtotal, subtotalServicios, descuentos, exento, exonerado, isv15, total };
     });
 
-    // Servicios y mano de obra (gravados con ISV)
-    servicios.value.forEach((s) => {
-      const bruto = s.cantidad * s.precio;
-      const desc = bruto * (s.descuento / 100);
-      const neto = bruto - desc;
-      subtotalServicios += bruto;
-      descuentos += desc;
-      isv15 += neto * ISV15;
+    const fmt = (n: number | undefined | null) => {
+      if (n === undefined || n === null || Number.isNaN(n)) return 'L. 0.00';
+      return `L. ${n.toLocaleString("es-HN", { minimumFractionDigits: 2 })}`;
+    };
+
+    const filtProd = computed(() => {
+      const q = busqProd.value.toLowerCase();
+      if (!q) return [];
+      return productos.value.filter((p) => 
+        p.nombre.toLowerCase().includes(q) || p.codigo.toLowerCase().includes(q)
+      ).slice(0, 5);
     });
 
-    subtotal += subtotalServicios;
-    const total = subtotal - descuentos + isv15;
-    return { subtotal, subtotalServicios, descuentos, exento, exonerado, isv15, total };
-  };
+    const filtServ = computed(() => {
+      const q = busqServ.value.toLowerCase();
+      if (!q) return [];
+      return serviciosDisponibles.filter((s) => 
+        s.descripcion.toLowerCase().includes(q)
+      ).slice(0, 5);
+    });
 
-  const t = calcTotales();
-  const fmt = (n: number) => `L. ${n.toLocaleString("es-HN", { minimumFractionDigits: 2 })}`;
-
-  const filtProd = productosDisponibles.filter(
-    (p) => p.nombre.toLowerCase().includes(busqProd.value.toLowerCase()) && busqProd.value.length > 0
-  );
-
-  const filtServ = serviciosDisponibles.filter(
-    (s) => s.descripcion.toLowerCase().includes(busqServ.value.toLowerCase()) && busqServ.value.length > 0
-  );
-
-  const clienteSeleccionado = clientesDisponibles.find((c) => c.id === cliente.value);
+    const clienteSeleccionado = computed(() => 
+      clientes.value.find((c) => c.id === clienteId.value)
+    );
 
     return () => {
       return (
     <div class="space-y-5">
       {/* === BLOQUE CAI FISCAL === */}
-      <div
-        class="rounded-2xl overflow-hidden shadow-md"
-        style={{ border: "1px solid #1E3A5F" }}
-      >
-        {/* Encabezado fiscal */}
-        <div
-          class="flex items-center justify-between px-6 py-4"
-          style={{ background: "linear-gradient(135deg, #0F172A 0%, #1E3A5F 100%)" }}
-        >
-          <div class="flex items-center gap-3">
-            <div
-              class="w-9 h-9 rounded-xl flex items-center justify-center"
-              style={{ background: "rgba(56,189,248,0.18)", border: "1px solid rgba(56,189,248,0.30)" }}
-            >
-              <ShieldCheck size={18} style={{ color: "#38BDF8" }} />
-            </div>
-            <div>
-              <div class="font-bold text-sm" style={{ color: "#fff" }}>
-                Datos Fiscales — CAI
-              </div>
-              <div class="text-xs" style={{ color: "#7DD3FC" }}>
-                Código de Autorización de Impresión — SAR Honduras
-              </div>
-            </div>
-          </div>
-          {/* Indicador de solo lectura */}
-          <div
-            class="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold"
-            style={{ background: "rgba(255,255,255,0.08)", color: "#94A3B8", border: "1px solid rgba(255,255,255,0.12)" }}
-          >
-            <Lock size={13} />
-            Solo lectura · Configurable en{" "}
-            <span style={{ color: "#38BDF8" }}>Configuración</span>
-          </div>
-        </div>
-
-        {/* Campos CAI */}
-        <div
-          class="px-6 py-5"
-          style={{ background: "#F8FBFF", borderTop: "1px solid #DBEAFE" }}
-        >
-          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* CAI número */}
-            <div class="col-span-2 lg:col-span-4">
-              <label class="block text-xs font-bold mb-1.5" style={{ color: "#1E3A5F" }}>
-                Número de CAI
-              </label>
-              <input
-                value={caiNumero}
-                onChange={(e) => setCaiNumero((e.target as HTMLInputElement).value)}
-                disabled={true}
-                placeholder="Automático desde configuración"
-                class="w-full px-3 py-2.5 rounded-xl text-sm outline-none font-mono"
-                style={{
-                  background: "#EFF6FF",
-                  border: "1px solid #BFDBFE",
-                  color: "#1D4ED8",
-                  cursor: "not-allowed",
-                }}
-              />
-            </div>
-
-            <div>
-              <label class="block text-xs font-bold mb-1.5" style={{ color: "#1E3A5F" }}>
-                Rango autorizado — inicio
-              </label>
-              <input
-                value={caiRangoInicio}
-                onChange={(e) => setCaiRangoInicio((e.target as HTMLInputElement).value)}
-                disabled={true}
-                class="w-full px-3 py-2.5 rounded-xl text-xs outline-none font-mono"
-                style={{
-                  background: "#EFF6FF",
-                  border: "1px solid #BFDBFE",
-                  color: "#1D4ED8",
-                  cursor: "not-allowed",
-                }}
-              />
-            </div>
-
-            <div>
-              <label class="block text-xs font-bold mb-1.5" style={{ color: "#1E3A5F" }}>
-                Rango autorizado — fin
-              </label>
-              <input
-                value={caiRangoFin}
-                onChange={(e) => setCaiRangoFin((e.target as HTMLInputElement).value)}
-                disabled={true}
-                class="w-full px-3 py-2.5 rounded-xl text-xs outline-none font-mono"
-                style={{
-                  background: "#EFF6FF",
-                  border: "1px solid #BFDBFE",
-                  color: "#1D4ED8",
-                  cursor: "not-allowed",
-                }}
-              />
-            </div>
-
-            <div>
-              <label class="block text-xs font-bold mb-1.5" style={{ color: "#1E3A5F" }}>
-                Número de factura
-              </label>
-              <input
-                value={caiFactura}
-                onChange={(e) => setCaiFactura((e.target as HTMLInputElement).value)}
-                disabled={true}
-                class="w-full px-3 py-2.5 rounded-xl text-xs outline-none font-mono font-bold"
-                style={{
-                  background: "#EFF6FF",
-                  border: "2px solid #38BDF8",
-                  color: "#0369A1",
-                  cursor: "not-allowed",
-                }}
-              />
-            </div>
-
-            <div>
-              <label class="block text-xs font-bold mb-1.5" style={{ color: "#1E3A5F" }}>
-                Fecha límite de emisión
-              </label>
-              <input
-                type="date"
-                value={caiFecha}
-                onChange={(e) => setCaiFecha((e.target as HTMLInputElement).value)}
-                disabled={true}
-                class="w-full px-3 py-2.5 rounded-xl text-xs outline-none"
-                style={{
-                  background: "#EFF6FF",
-                  border: "1px solid #BFDBFE",
-                  color: "#1D4ED8",
-                  cursor: "not-allowed",
-                }}
-              />
-            </div>
-
-            <div>
-              <label class="block text-xs font-bold mb-1.5" style={{ color: "#1E3A5F" }}>
-                RTN del negocio
-              </label>
-              <input
-                value={caiRtn}
-                onChange={(e) => setCaiRtn((e.target as HTMLInputElement).value)}
-                disabled={true}
-                class="w-full px-3 py-2.5 rounded-xl text-xs outline-none font-mono"
-                style={{
-                  background: "#EFF6FF",
-                  border: "1px solid #BFDBFE",
-                  color: "#1D4ED8",
-                  cursor: "not-allowed",
-                }}
-              />
-            </div>
-
-            <div>
-              <label class="block text-xs font-bold mb-1.5" style={{ color: "#1E3A5F" }}>
-                Sucursal emisora
-              </label>
-              <div class="relative">
-                <select
-                  value={sucursal.value}
-                  onChange={(e) => setSucursal((e.target as HTMLInputElement).value)}
-                  class="w-full px-3 py-2.5 rounded-xl text-xs outline-none appearance-none"
-                  style={{ background: "#fff", border: "1px solid #BFDBFE", color: "#1E3A5F" }}
-                >
-                  <option>Sucursal Central</option>
-                  <option>Sucursal Norte</option>
-                  <option>Sucursal Sur</option>
-                </select>
-                <ChevronDown size={12} class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#64748B" }} />
-              </div>
-            </div>
-
-            {/* Tipo de compra */}
-            <div class="col-span-2 lg:col-span-4">
-              <label class="block text-xs font-bold mb-2" style={{ color: "#1E3A5F" }}>
-                Tipo de compra
-              </label>
-              <div class="flex gap-3">
-                {(["contado", "credito"] as const).map((tipo) => (
-                  <label
-                    key={tipo}
-                    class="flex items-center gap-2 px-4 py-2.5 rounded-xl cursor-pointer transition-all"
-                    style={{
-                      background: tipoPago.value === tipo ? "linear-gradient(135deg,#0F172A,#1E3A5F)" : "#fff",
-                      border: `1px solid ${tipoPago.value === tipo ? "#38BDF8" : "#BFDBFE"}`,
-                    }}
-                  >
-                    <input
-                      type="radio"
-                      name="tipoPago.value"
-                      value={tipo}
-                      checked={tipoPago.value === tipo}
-                      onChange={() => setTipoPago(tipo)}
-                      class="hidden"
-                    />
-                    <div
-                      class="w-4 h-4 rounded-full border-2 flex items-center justify-center"
-                      style={{ borderColor: tipoPago.value === tipo ? "#38BDF8" : "#CBD5E1" }}
-                    >
-                      {tipoPago.value === tipo && (
-                        <div class="w-2 h-2 rounded-full" style={{ background: "#38BDF8" }} />
-                      )}
-                    </div>
-                    {tipo === "contado" ? (
-                      <Banknote size={13} style={{ color: tipoPago.value === tipo ? "#38BDF8" : "#64748B" }} />
-                    ) : (
-                      <CreditCard size={13} style={{ color: tipoPago.value === tipo ? "#38BDF8" : "#64748B" }} />
-                    )}
-                    <span
-                      class="text-xs font-semibold capitalize"
-                      style={{ color: tipoPago.value === tipo ? "#fff" : "#374151" }}
-                    >
-                      {tipo === "contado" ? "Contado" : "Crédito"}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* ── Indicador de uso del rango ── */}
-            <div
-              class="mt-5 rounded-xl p-4"
-              style={{
-                background: restantes <= 5 ? "#FEF2F2" : restantes <= 15 ? "#FFF7ED" : "#F0F9FF",
-                border: `1px solid ${restantes <= 5 ? "#FECACA" : restantes <= 15 ? "#FED7AA" : "#BAE6FD"}`,
-              }}
-            >
-              <div class="flex items-center justify-between mb-2">
-                <div class="flex items-center gap-2">
-                  <ShieldCheck size={13} style={{ color: restantes <= 5 ? "#F87171" : restantes <= 15 ? "#FB923C" : "#38BDF8" }} />
-                  <span class="text-xs font-bold" style={{ color: restantes <= 5 ? "#DC2626" : restantes <= 15 ? "#C2410C" : "#0369A1" }}>
-                    Uso del rango CAI actual
-                  </span>
-                </div>
-                <span class="text-xs font-bold" style={{ color: restantes <= 5 ? "#DC2626" : restantes <= 15 ? "#C2410C" : "#0369A1" }}>
-                  {usados} / {totalRango} facturas usadas · {restantes} restantes
-                </span>
-              </div>
-              <div class="h-2 rounded-full overflow-hidden" style={{ background: "rgba(0,0,0,0.08)" }}>
-                <div
-                  class="h-full rounded-full transition-all"
-                  style={{
-                    width: `${(usados / totalRango) * 100}%`,
-                    background: restantes <= 5
-                      ? "linear-gradient(90deg,#F87171,#EF4444)"
-                      : restantes <= 15
-                      ? "linear-gradient(90deg,#FB923C,#F97316)"
-                      : "linear-gradient(90deg,#38BDF8,#0EA5E9)",
-                  }}
-                />
-              </div>
-              {restantes <= 15 && (
-                <p class="text-xs mt-2" style={{ color: restantes <= 5 ? "#DC2626" : "#C2410C" }}>
-                  {restantes <= 5
-                    ? "⚠️ Rango casi agotado. Ve a Configuración → Configuración fiscal para solicitar y registrar un nuevo CAI."
-                    : `Quedan ${restantes} facturas en este rango. Solicita un nuevo CAI a la SAR pronto.`}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
 
       <div class="grid lg:grid-cols-3 gap-6">
         {/* Panel izquierdo */}
@@ -513,13 +251,13 @@ export default defineComponent({
                 </label>
                 <div class="relative">
                   <select
-                    value={cliente.value}
-                    onChange={(e) => setCliente((e.target as HTMLInputElement).value)}
+                    value={clienteId.value}
+                    onChange={(e) => (clienteId.value = (e.target as HTMLInputElement).value)}
                     class="w-full px-3 py-2.5 rounded-xl text-sm outline-none appearance-none"
                     style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", color: "#374151" }}
                   >
-                    <option value="">— Cliente de contado / Seleccionar —</option>
-                    {clientesDisponibles.map((c) => (
+                    <option value="">— {loadingClientes.value ? 'Cargando clientes...' : 'Cliente de contado / Seleccionar'} —</option>
+                    {clientes.value.filter(c => !!c).map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.nombre} · RTN: {c.rtn}
                       </option>
@@ -540,10 +278,11 @@ export default defineComponent({
                   RTN del cliente
                 </label>
                 <input
-                  placeholder={clienteSeleccionado?.rtn ?? "0000-0000-00000"}
-                  defaultValue={clienteSeleccionado?.rtn ?? ""}
+                  value={clienteSeleccionado.value?.rtn ?? ""}
+                  readOnly
+                  placeholder="0000-0000-00000"
                   class="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
-                  style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", color: "#111827" }}
+                  style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", color: "#64748B" }}
                 />
               </div>
               <div>
@@ -553,14 +292,25 @@ export default defineComponent({
                 >
                   Sucursal de venta
                 </label>
-                <select
-                  class="w-full px-3 py-2.5 rounded-xl text-sm outline-none appearance-none"
-                  style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", color: "#374151" }}
-                >
-                  <option>Sucursal Central</option>
-                  <option>Sucursal Norte</option>
-                  <option>Sucursal Sur</option>
-                </select>
+
+                <div class="relative">
+                  <select
+                    value={sucursalId.value}
+                    onChange={(e) => (sucursalId.value = (e.target as HTMLInputElement).value)}
+                    class="w-full px-3 py-2.5 rounded-xl text-sm outline-none appearance-none"
+                    style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", color: "#374151" }}
+                  >
+                    <option value="">Seleccionar sucursal</option>
+                    {sucursales.value.map((s) => (
+                      <option key={s.id} value={s.id}>{s.nombre}</option>
+                    ))}
+                  </select>
+                  <ChevronDown
+                    size={14}
+                    class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                    style={{ color: "#94A3B8" }}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -592,17 +342,17 @@ export default defineComponent({
               />
               <input
                 value={busqProd.value}
-                onChange={(e) => setBusqProd((e.target as HTMLInputElement).value)}
-                placeholder="Buscar y agregar producto..."
+                onInput={(e) => (busqProd.value = (e.target as HTMLInputElement).value)}
+                placeholder={loadingProds.value ? "Cargando catálogo..." : "Buscar por nombre o código..."}
                 class="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm outline-none"
                 style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", color: "#111827" }}
               />
-              {filtProd.length > 0 && (
+              {filtProd.value.length > 0 && (
                 <div
                   class="absolute left-0 right-0 top-full mt-1 rounded-xl shadow-xl z-20 overflow-hidden"
                   style={{ background: "#fff", border: "1px solid #E2E8F0" }}
                 >
-                  {filtProd.map((p) => (
+                  {filtProd.value.map((p) => (
                     <button
                       key={p.id}
                       onClick={() => agregarProducto(p)}
@@ -613,12 +363,12 @@ export default defineComponent({
                           {p.nombre}
                         </div>
                         <div class="text-xs" style={{ color: "#94A3B8" }}>
-                          {p.id}
+                          {p.codigo}
                         </div>
                       </div>
                       <div class="flex items-center gap-2">
                         <span class="font-bold text-xs" style={{ color: "#38BDF8" }}>
-                          {fmt(p.precio)}
+                          {formatPrecio(p.precio)}
                         </span>
                         <Plus size={14} style={{ color: "#64748B" }} />
                       </div>
@@ -774,17 +524,17 @@ export default defineComponent({
               />
               <input
                 value={busqServ.value}
-                onChange={(e) => setBusqServ((e.target as HTMLInputElement).value)}
+                onInput={(e) => (busqServ.value = (e.target as HTMLInputElement).value)}
                 placeholder="Buscar y agregar servicio o mano de obra..."
                 class="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm outline-none"
                 style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", color: "#111827" }}
               />
-              {filtServ.length > 0 && (
+              {filtServ.value.length > 0 && (
                 <div
                   class="absolute left-0 right-0 top-full mt-1 rounded-xl shadow-xl z-20 overflow-hidden"
                   style={{ background: "#fff", border: "1px solid #E2E8F0" }}
                 >
-                  {filtServ.map((s) => (
+                  {filtServ.value.map((s) => (
                     <button
                       key={s.id}
                       onClick={() => agregarServicio(s)}
@@ -1010,12 +760,12 @@ export default defineComponent({
             </h3>
             <div class="space-y-2">
               {[
-                { label: "Subtotal productos", value: fmt(t.subtotal - t.subtotalServicios), color: "#374151", show: lineas.value.length > 0 },
-                { label: "Subtotal servicios", value: fmt(t.subtotalServicios), color: "#FB923C", show: servicios.value.length > 0 },
-                { label: "Descuentos y rebajas", value: `- ${fmt(t.descuentos)}`, color: "#F87171", show: t.descuentos > 0 },
-                { label: "Importe exento", value: fmt(t.exento), color: "#374151", show: t.exento > 0 },
-                { label: "Importe exonerado", value: fmt(t.exonerado), color: "#374151", show: t.exonerado > 0 },
-                { label: "ISV 15%", value: fmt(t.isv15), color: "#374151", show: true },
+                { label: "Subtotal productos", value: fmt(t.value.subtotal - t.value.subtotalServicios), color: "#374151", show: lineas.value.length > 0 },
+                { label: "Subtotal servicios", value: fmt(t.value.subtotalServicios), color: "#FB923C", show: servicios.value.length > 0 },
+                { label: "Descuentos y rebajas", value: `- ${fmt(t.value.descuentos)}`, color: "#F87171", show: t.value.descuentos > 0 },
+                { label: "Importe exento", value: fmt(t.value.exento), color: "#374151", show: t.value.exento > 0 },
+                { label: "Importe exonerado", value: fmt(t.value.exonerado), color: "#374151", show: t.value.exonerado > 0 },
+                { label: "ISV 15%", value: fmt(t.value.isv15), color: "#374151", show: true },
               ]
                 .filter((row) => row.show)
                 .map((row) => (
@@ -1040,7 +790,7 @@ export default defineComponent({
                   Total a pagar
                 </span>
                 <span class="text-xl font-extrabold" style={{ color: "#F87171" }}>
-                  {fmt(t.total)}
+                  {fmt(t.value.total)}
                 </span>
               </div>
             </div>
@@ -1054,13 +804,15 @@ export default defineComponent({
                   Forma de pago
                 </label>
                 <select
+                  value={tipoPago.value}
+                  onChange={(e) => (tipoPago.value = (e.target as HTMLInputElement).value as any)}
                   class="w-full px-3 py-2.5 rounded-xl text-sm outline-none appearance-none"
                   style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", color: "#374151" }}
                 >
-                  <option>Efectivo</option>
-                  <option>Tarjeta de crédito</option>
-                  <option>Transferencia bancaria</option>
-                  <option>Crédito interno</option>
+                  <option value="contado">Efectivo</option>
+                  <option value="contado">Tarjeta de crédito</option>
+                  <option value="contado">Transferencia bancaria</option>
+                  <option value="credito">Crédito interno</option>
                 </select>
               </div>
               <div>
@@ -1191,7 +943,7 @@ export default defineComponent({
                   </span>{" "}
                   · Sucursal:{" "}
                   <span class="font-semibold" style={{ color: "#0369A1" }}>
-                    {sucursal.value}
+                    {sucursalSeleccionada.value?.nombre ?? "No seleccionada"}
                   </span>
                 </p>
               </div>
@@ -1272,7 +1024,7 @@ export default defineComponent({
                   style={{ borderTop: "2px dashed #E2E8F0" }}
                 >
                   <span style={{ color: "#0F172A" }}>TOTAL</span>
-                  <span style={{ color: "#F87171" }}>{fmt(t.total)}</span>
+                  <span style={{ color: "#F87171" }}>{fmt(t.value.total)}</span>
                 </div>
               </div>
             </div>
