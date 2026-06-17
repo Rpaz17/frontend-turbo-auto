@@ -25,22 +25,9 @@ interface LineaProducto {
 interface LineaServicio {
   id: number;
   descripcion: string;
-  codigo: string;
-  cantidad: number;
-  precio: number;
-  descuento: number;
+  total: number;
+  nota_interna?: string;
 }
-
-const serviciosDisponibles = [
-  { id: "SRV-001", descripcion: "Instalación de frenos completo", precio: 450 },
-  { id: "SRV-002", descripcion: "Cambio de aceite y filtro", precio: 200 },
-  { id: "SRV-003", descripcion: "Alineación y balanceo", precio: 350 },
-  { id: "SRV-004", descripcion: "Diagnóstico electrónico", precio: 300 },
-  { id: "SRV-005", descripcion: "Reparación de suspensión", precio: 800 },
-  { id: "SRV-006", descripcion: "Instalación de batería", precio: 150 },
-  { id: "SRV-007", descripcion: "Cambio de bujías", precio: 180 },
-  { id: "SRV-008", descripcion: "Mano de obra general", precio: 250 },
-];
 
 const CAI_PREDETERMINADO = {
   numero: "2F4A8B-C91E3D-7A2150-B4F839-DE6C02-A5",
@@ -81,13 +68,14 @@ export default defineComponent({
     const clienteId = ref("");
     const sucursalId = ref("");
     const busqProd = ref("");
-    const busqServ = ref("");
     const lineas = ref<LineaProducto[]>([]);
     const servicios = ref<LineaServicio[]>([]);
     const vistaPrevia = ref(false);
-    const mostrarServicioPersonalizado = ref(false);
-    const servicioPersonalizado = ref({ descripcion: "", precio: 0 });
     const tipoPago = ref<"contado" | "credito">("contado");
+
+    // Inputs for manually adding a service
+    const descServicio = ref("");
+    const precioServicio = ref<number | null>(null);
 
     const caiNumero = CAI_PREDETERMINADO.numero;
     const caiRangoInicio = CAI_PREDETERMINADO.rangoInicio;
@@ -113,40 +101,20 @@ export default defineComponent({
       busqProd.value = "";
     };
 
-    const agregarServicio = (s: any) => {
+    const agregarServicio = () => {
+      if (!descServicio.value.trim() || precioServicio.value === null || precioServicio.value <= 0) return;
       servicios.value.push({
         id: servicioId++,
-        descripcion: s.descripcion,
-        codigo: s.id,
-        cantidad: 1,
-        precio: s.precio,
-        descuento: 0,
+        descripcion: descServicio.value.trim(),
+        total: Number(precioServicio.value),
       });
-      busqServ.value = "";
-    };
-
-    const agregarServicioPersonalizado = () => {
-      if (!servicioPersonalizado.value.descripcion.trim() || servicioPersonalizado.value.precio <= 0) return;
-      servicios.value.push({
-        id: servicioId++,
-        descripcion: servicioPersonalizado.value.descripcion,
-        codigo: "SRV-CUSTOM",
-        cantidad: 1,
-        precio: servicioPersonalizado.value.precio,
-        descuento: 0,
-      });
-      servicioPersonalizado.value = { descripcion: "", precio: 0 };
-      mostrarServicioPersonalizado.value = false;
+      descServicio.value = "";
+      precioServicio.value = null;
     };
 
     const actualizarLinea = (id: number, campo: keyof LineaProducto, valor: any) => {
       const idx = lineas.value.findIndex(l => l.id === id);
       if (idx !== -1) (lineas.value[idx] as any)[campo] = valor;
-    };
-
-    const actualizarServicio = (id: number, campo: keyof LineaServicio, valor: any) => {
-      const idx = servicios.value.findIndex(s => s.id === id);
-      if (idx !== -1) (servicios.value[idx] as any)[campo] = valor;
     };
 
     const eliminarLinea = (id: number) => {
@@ -176,14 +144,9 @@ export default defineComponent({
         else isv15 += neto * ISV15;
       });
 
-      // Servicios y mano de obra (gravados con ISV)
+      // Servicios y mano de obra (no gravados con ISV)
       servicios.value.forEach((s) => {
-        const bruto = s.cantidad * s.precio;
-        const desc = bruto * (s.descuento / 100);
-        const neto = bruto - desc;
-        subtotalServicios += bruto;
-        descuentos += desc;
-        isv15 += neto * ISV15;
+        subtotalServicios += s.total;
       });
 
       subtotal += subtotalServicios;
@@ -201,14 +164,6 @@ export default defineComponent({
       if (!q) return [];
       return productos.value.filter((p) => 
         p.nombre.toLowerCase().includes(q) || p.codigo.toLowerCase().includes(q)
-      ).slice(0, 5);
-    });
-
-    const filtServ = computed(() => {
-      const q = busqServ.value.toLowerCase();
-      if (!q) return [];
-      return serviciosDisponibles.filter((s) => 
-        s.descripcion.toLowerCase().includes(q)
       ).slice(0, 5);
     });
 
@@ -515,49 +470,48 @@ export default defineComponent({
               Servicios y mano de obra
             </h3>
 
-            {/* Buscador de servicios */}
-            <div class="relative mb-4">
-              <Search
-                size={15}
-                class="absolute left-3 top-1/2 -translate-y-1/2"
-                style={{ color: "#94A3B8" }}
-              />
-              <input
-                value={busqServ.value}
-                onInput={(e) => (busqServ.value = (e.target as HTMLInputElement).value)}
-                placeholder="Buscar y agregar servicio o mano de obra..."
-                class="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm outline-none"
-                style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", color: "#111827" }}
-              />
-              {filtServ.value.length > 0 && (
-                <div
-                  class="absolute left-0 right-0 top-full mt-1 rounded-xl shadow-xl z-20 overflow-hidden"
-                  style={{ background: "#fff", border: "1px solid #E2E8F0" }}
+            {/* Formulario de agregar servicio */}
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-3 mb-5 p-4 rounded-xl" style={{ background: "#FFF7ED", border: "1px solid #FDBA74" }}>
+              <div class="md:col-span-7">
+                <label class="block text-xs font-semibold mb-1.5" style={{ color: "#C2410C" }}>
+                  Descripción del servicio
+                </label>
+                <input
+                  value={descServicio.value}
+                  onInput={(e) => (descServicio.value = (e.target as HTMLInputElement).value)}
+                  placeholder="Ej. Cambio de bujías, Alineación..."
+                  class="w-full px-3 py-2 rounded-xl text-sm outline-none"
+                  style={{ background: "#fff", border: "1px solid #FDBA74", color: "#111827" }}
+                />
+              </div>
+              <div class="md:col-span-3">
+                <label class="block text-xs font-semibold mb-1.5" style={{ color: "#C2410C" }}>
+                  Precio (L.)
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={precioServicio.value === null ? "" : precioServicio.value}
+                  onInput={(e) => (precioServicio.value = (e.target as HTMLInputElement).value === "" ? null : Number((e.target as HTMLInputElement).value))}
+                  placeholder="0.00"
+                  class="w-full px-3 py-2 rounded-xl text-sm outline-none"
+                  style={{ background: "#fff", border: "1px solid #FDBA74", color: "#111827" }}
+                />
+              </div>
+              <div class="md:col-span-2 flex items-end">
+                <button
+                  onClick={agregarServicio}
+                  class="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-bold transition-all shadow-sm animate-pulse-subtle"
+                  style={{
+                    background: "linear-gradient(135deg, #FB923C, #F97316)",
+                    color: "#fff",
+                    boxShadow: "0 2px 6px rgba(249,115,22,0.2)",
+                  }}
                 >
-                  {filtServ.value.map((s) => (
-                    <button
-                      key={s.id}
-                      onClick={() => agregarServicio(s)}
-                      class="w-full flex items-center justify-between px-4 py-3 text-sm hover:bg-slate-50 text-left transition-colors"
-                    >
-                      <div>
-                        <div class="font-semibold" style={{ color: "#0F172A" }}>
-                          {s.descripcion}
-                        </div>
-                        <div class="text-xs" style={{ color: "#94A3B8" }}>
-                          {s.id}
-                        </div>
-                      </div>
-                      <div class="flex items-center gap-2">
-                        <span class="font-bold text-xs" style={{ color: "#FB923C" }}>
-                          {fmt(s.precio)}
-                        </span>
-                        <Plus size={14} style={{ color: "#64748B" }} />
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
+                  <Plus size={16} /> Agregar
+                </button>
+              </div>
             </div>
 
             {/* Tabla de servicios */}
@@ -571,7 +525,7 @@ export default defineComponent({
                   Sin servicios agregados
                 </p>
                 <p class="text-xs mt-1" style={{ color: "#FDBA74" }}>
-                  Busca y selecciona servicios de taller arriba
+                  Ingresa la descripción y el precio arriba para agregar un servicio
                 </p>
               </div>
             ) : (
@@ -579,7 +533,7 @@ export default defineComponent({
                 <table class="w-full text-sm">
                   <thead>
                     <tr style={{ borderBottom: "1px solid #F1F5F9" }}>
-                      {["Servicio", "Cant.", "Precio unit.", "Desc. %", "Total", ""].map(
+                      {["Servicio", "Total", ""].map(
                         (h) => (
                           <th
                             key={h}
@@ -594,8 +548,6 @@ export default defineComponent({
                   </thead>
                   <tbody>
                     {servicios.value.map((s) => {
-                      const bruto = s.cantidad * s.precio;
-                      const neto = bruto * (1 - s.descuento / 100);
                       return (
                         <tr key={s.id} style={{ borderBottom: "1px solid #F8FAFC" }}>
                           <td class="py-2.5 pr-4">
@@ -605,54 +557,12 @@ export default defineComponent({
                             >
                               {s.descripcion}
                             </div>
-                            <div class="text-xs" style={{ color: "#94A3B8" }}>
-                              {s.codigo}
-                            </div>
-                          </td>
-                          <td class="py-2.5 pr-4">
-                            <input
-                              type="number"
-                              min={1}
-                              value={s.cantidad}
-                              onChange={(e) =>
-                                actualizarServicio(s.id, "cantidad", Number((e.target as HTMLInputElement).value))
-                              }
-                              class="w-16 px-2 py-1.5 rounded-lg text-xs text-center outline-none"
-                              style={{
-                                background: "#FFF7ED",
-                                border: "1px solid #FDBA74",
-                                color: "#111827",
-                              }}
-                            />
-                          </td>
-                          <td
-                            class="py-2.5 pr-4 text-xs font-semibold"
-                            style={{ color: "#374151" }}
-                          >
-                            {fmt(s.precio)}
-                          </td>
-                          <td class="py-2.5 pr-4">
-                            <input
-                              type="number"
-                              min={0}
-                              max={100}
-                              value={s.descuento}
-                              onChange={(e) =>
-                                actualizarServicio(s.id, "descuento", Number((e.target as HTMLInputElement).value))
-                              }
-                              class="w-16 px-2 py-1.5 rounded-lg text-xs text-center outline-none"
-                              style={{
-                                background: "#FFF7ED",
-                                border: "1px solid #FDBA74",
-                                color: "#111827",
-                              }}
-                            />
                           </td>
                           <td
                             class="py-2.5 pr-4 text-xs font-bold"
                             style={{ color: "#C2410C" }}
                           >
-                            {fmt(neto)}
+                            {fmt(s.total)}
                           </td>
                           <td class="py-2.5">
                             <button
@@ -669,80 +579,6 @@ export default defineComponent({
                 </table>
               </div>
             )}
-
-            {/* Agregar servicio personalizado */}
-            <div class="mt-4">
-              {!mostrarServicioPersonalizado.value ? (
-                <button
-                  onClick={() => setMostrarServicioPersonalizado(true)}
-                  class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all"
-                  style={{
-                    background: "#FFF7ED",
-                    color: "#C2410C",
-                    border: "1px dashed #FDBA74",
-                  }}
-                >
-                  <Plus size={14} /> Agregar servicio personalizado
-                </button>
-              ) : (
-                <div
-                  class="rounded-xl p-4"
-                  style={{ background: "#FFF7ED", border: "1px solid #FDBA74" }}
-                >
-                  <p class="text-xs font-bold mb-3" style={{ color: "#C2410C" }}>
-                    Servicio personalizado
-                  </p>
-                  <div class="space-y-2.5">
-                    <input
-                      value={servicioPersonalizado.value.descripcion}
-                      onChange={(e) =>
-                        setServicioPersonalizado({ ...servicioPersonalizado.value, descripcion: (e.target as HTMLInputElement).value })
-                      }
-                      placeholder="Descripción del servicio o mano de obra..."
-                      class="w-full px-3 py-2 rounded-xl text-sm outline-none"
-                      style={{ background: "#fff", border: "1px solid #FDBA74", color: "#111827" }}
-                    />
-                    <input
-                      type="number"
-                      min={0}
-                      step={0.01}
-                      value={servicioPersonalizado.value.precio || ""}
-                      onChange={(e) =>
-                        setServicioPersonalizado({
-                          ...servicioPersonalizado.value,
-                          precio: Number((e.target as HTMLInputElement).value),
-                        })
-                      }
-                      placeholder="Precio (L.)"
-                      class="w-full px-3 py-2 rounded-xl text-sm outline-none"
-                      style={{ background: "#fff", border: "1px solid #FDBA74", color: "#111827" }}
-                    />
-                    <div class="flex gap-2">
-                      <button
-                        onClick={agregarServicioPersonalizado}
-                        class="flex-1 py-2 rounded-xl text-sm font-semibold"
-                        style={{
-                          background: "linear-gradient(135deg,#FB923C,#F97316)",
-                          color: "#fff",
-                        }}
-                      >
-                        Agregar
-                      </button>
-                      <button
-                        onClick={() => {
-                          setMostrarServicioPersonalizado(false);
-                          setServicioPersonalizado({ descripcion: "", precio: 0 });
-                        }}
-                        class="px-4 py-2 rounded-xl text-sm font-semibold"
-                        style={{ background: "#fff", color: "#64748B", border: "1px solid #E2E8F0" }}
-                      >
-                        Cancelar
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
         </div>
 
@@ -794,7 +630,6 @@ export default defineComponent({
                 </span>
               </div>
             </div>
-
             <div class="mt-5 space-y-3">
               <div>
                 <label
@@ -1009,10 +844,10 @@ export default defineComponent({
                         style={{ borderBottom: "1px solid #FFF7ED" }}
                       >
                         <span style={{ color: "#374151" }}>
-                          {s.descripcion} x{s.cantidad}
+                          {s.descripcion}
                         </span>
                         <span style={{ color: "#C2410C", fontWeight: 600 }}>
-                          {fmt(s.cantidad * s.precio * (1 - s.descuento / 100))}
+                          {fmt(s.total)}
                         </span>
                       </div>
                     ))}

@@ -118,6 +118,13 @@ export const facturaProductoSchema = z.object({
   precio: z.string(),
   isv: z.string(),
 });
+export const facturaServicioSchema = z.object({
+  descripcion: z.string(),
+  total: z.number(),
+  nota_interna: z.string().optional(),
+});
+export type FacturaServicio = z.infer<typeof facturaServicioSchema>;
+
 export type FacturaProducto = z.infer<typeof facturaProductoSchema>;
 
 export const facturaSchema = z.object({
@@ -134,6 +141,7 @@ export const facturaSchema = z.object({
   rtn_cliente: z.string(),
   cliente: clientSchema.optional(),
   productos: z.array(facturaProductoSchema).optional(),
+  servicios: z.array(facturaServicioSchema).optional(),
 });
 export type Factura = z.infer<typeof facturaSchema>;
 
@@ -153,6 +161,7 @@ export const createFacturaDtoSchema = z.object({
       cantidad: z.number(),
     }),
   ),
+  servicios: z.array(facturaServicioSchema).optional(),
 });
 export type CreateFacturaDto = z.infer<typeof createFacturaDtoSchema>;
 
