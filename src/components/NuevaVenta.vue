@@ -1,11 +1,17 @@
 <script lang="tsx">
-import { defineComponent, ref, type PropType } from 'vue';
+import { computed, defineComponent, onMounted, ref, type PropType } from 'vue';
 import {
   Search, Plus, Trash2, FileText, Printer, Eye, ChevronDown,
-  User, Package, ShieldCheck, Lock, Save, X,
+  User, Package, ShieldCheck, Save, X,
   CreditCard, Banknote, Wrench,
 } from "lucide-vue-next";
 import { getCaiSucursal, getSucursalActiva, store, type SesionUsuario } from '../store';
+import { generateFactura } from '../api/facturas';
+import { getClients } from '../api/clientes';
+import { getInventario } from '../api/inventario';
+import { getProducts } from '../api/products';
+import { getServicios } from '../api/servicios';
+import { ApiError } from '../lib/http';
 
 interface LineaProducto {
   id: number;
@@ -27,31 +33,29 @@ interface LineaServicio {
   descuento: number;
 }
 
-const productosDisponibles = [
-  { id: "PRD-001", nombre: "Filtro de aceite 5W-30", precio: 85 },
-  { id: "PRD-002", nombre: "Pastillas freno Bosch DB1170", precio: 280 },
-  { id: "PRD-003", nombre: "Bujías NGK Platinum BKR5E", precio: 95 },
-  { id: "PRD-004", nombre: "Batería Willard 12V 60Ah", precio: 1250 },
-  { id: "PRD-005", nombre: "Aceite Motor Castrol GTX 20W-50", precio: 185 },
-  { id: "PRD-006", nombre: "Amortiguador Monroe 911264", precio: 950 },
-];
+interface ProductoDisponible {
+  id: string;
+  nombre: string;
+  precio: number;
+  stock: number;
+  codigo?: string;
+  tipo?: string;
+  proveedor?: string;
+}
 
-const serviciosDisponibles = [
-  { id: "SRV-001", descripcion: "Instalación de frenos completo", precio: 450 },
-  { id: "SRV-002", descripcion: "Cambio de aceite y filtro", precio: 200 },
-  { id: "SRV-003", descripcion: "Alineación y balanceo", precio: 350 },
-  { id: "SRV-004", descripcion: "Diagnóstico electrónico", precio: 300 },
-  { id: "SRV-005", descripcion: "Reparación de suspensión", precio: 800 },
-  { id: "SRV-006", descripcion: "Instalación de batería", precio: 150 },
-  { id: "SRV-007", descripcion: "Cambio de bujías", precio: 180 },
-  { id: "SRV-008", descripcion: "Mano de obra general", precio: 250 },
-];
+interface ServicioDisponible {
+  id: string;
+  descripcion: string;
+  precio: number;
+  categoria?: string;
+  notas?: string;
+}
 
-const clientesDisponibles = [
-  { id: "CLI-001", nombre: "Roberto Mejía", rtn: "0801-1985-12345" },
-  { id: "CLI-002", nombre: "Constructora HN S.A.", rtn: "0501-2001-00892" },
-  { id: "CLI-003", nombre: "Taller Morales & Asociados", rtn: "0801-1979-65432" },
-];
+interface ClienteDisponible {
+  id: string;
+  nombre: string;
+  rtn?: string | null;
+}
 
 // Extrae el número secuencial del formato 001-001-01-XXXXXXXX
 function secuencial(correlativo: string): number {
@@ -71,6 +75,13 @@ export default defineComponent({
   setup(props) {
   
 
+  const productosDisponibles = ref<ProductoDisponible[]>([]);
+  const serviciosDisponibles = ref<ServicioDisponible[]>([]);
+  const clientesDisponibles = ref<ClienteDisponible[]>([]);
+  const cargandoDatos = ref(false);
+  const guardandoFactura = ref(false);
+  const errorFactura = ref("");
+  const mensajeFactura = ref("");
   const cliente = ref("");
   const setCliente = (next: any) => { cliente.value = typeof next === 'function' ? next(cliente.value) : next; };
   const busqProd = ref("");
@@ -92,13 +103,15 @@ export default defineComponent({
   const setSucursalId = (next: any) => {
     if (props.usuario.rol !== 'admin') return;
     sucursalId.value = typeof next === 'function' ? next(sucursalId.value) : next;
+    void cargarDatosFacturacion();
   };
   const tipoPago = ref<"contado" | "credito">("contado");
   const setTipoPago = (next: any) => { tipoPago.value = typeof next === 'function' ? next(tipoPago.value) : next; };
 
   const ISV15 = 0.15;
 
-  const agregarProducto = (p: typeof productosDisponibles[0]) => {
+  const agregarProducto = (p: ProductoDisponible) => {
+    if (p.stock <= 0) return;
     setLineas((prev) => [
       ...prev,
       {
@@ -115,7 +128,7 @@ export default defineComponent({
     setBusqProd("");
   };
 
-  const agregarServicio = (s: typeof serviciosDisponibles[0]) => {
+  const agregarServicio = (s: ServicioDisponible) => {
     setServicios((prev) => [
       ...prev,
       {
@@ -192,15 +205,122 @@ export default defineComponent({
   const getTotales = calcTotales;
   const fmt = (n: number) => `L. ${n.toLocaleString("es-HN", { minimumFractionDigits: 2 })}`;
 
-  const filtProd = productosDisponibles.filter(
-    (p) => p.nombre.toLowerCase().includes(busqProd.value.toLowerCase()) && busqProd.value.length > 0
+  const precioNumero = (value: string | number) => {
+    if (typeof value === 'number') return value;
+    const parsed = Number(value.replace(/[^0-9.]/g, ''));
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  const cargarDatosFacturacion = async () => {
+    cargandoDatos.value = true;
+    errorFactura.value = '';
+    try {
+      const [productos, serviciosCatalogo, clientes] = await Promise.all([
+        getProducts(),
+        getServicios(),
+        getClients(),
+      ]);
+
+      clientesDisponibles.value = clientes
+        .filter((c) => c.activo)
+        .map((c) => ({ id: c.id, nombre: c.nombre, rtn: c.rtn }));
+
+      serviciosDisponibles.value = serviciosCatalogo.map((s) => ({
+        id: s.id,
+        descripcion: s.descripcion,
+        precio: s.precio,
+        categoria: s.categoria,
+        notas: s.notas,
+      }));
+
+      productosDisponibles.value = await Promise.all(
+        productos
+          .filter((p) => p.activo)
+          .map(async (p) => {
+            let stock = 0;
+            try {
+              const inventario = await getInventario(sucursalId.value, p.id);
+              stock = inventario.cantidad;
+            } catch (err) {
+              if (!(err instanceof ApiError && err.status === 404)) throw err;
+            }
+
+            return {
+              id: p.id,
+              nombre: p.nombre,
+              precio: precioNumero(p.precio),
+              stock,
+              codigo: p.codigo,
+              tipo: p.tipo_producto?.tipo,
+              proveedor: p.proveedor?.nombre ?? undefined,
+            };
+          }),
+      );
+    } catch (err) {
+      errorFactura.value = err instanceof Error ? err.message : 'No se pudieron cargar productos, servicios y clientes.';
+    } finally {
+      cargandoDatos.value = false;
+    }
+  };
+
+  const autorId = () => (/^\d+$/.test(props.usuario.id) ? props.usuario.id : '1');
+
+  const guardarFactura = async () => {
+    if (lineas.value.length === 0 && servicios.value.length === 0) {
+      errorFactura.value = 'Agrega al menos un producto o servicio para facturar.';
+      return;
+    }
+
+    guardandoFactura.value = true;
+    errorFactura.value = '';
+    mensajeFactura.value = '';
+    try {
+      const factura = await generateFactura({
+        sucursal_id: sucursalId.value,
+        autor_id: autorId(),
+        cliente_id: cliente.value || undefined,
+        rtn_cliente: clienteSeleccionado.value?.rtn ?? undefined,
+        productos: lineas.value.map((l) => ({
+          producto_id: l.codigo,
+          cantidad: Number(l.cantidad) || 1,
+        })),
+        servicios: servicios.value.map((s) => ({
+          descripcion: `${s.descripcion}${s.cantidad > 1 ? ` x${s.cantidad}` : ''}`,
+          total: Number((s.cantidad * s.precio * (1 - s.descuento / 100)).toFixed(2)),
+          nota_interna: s.codigo,
+        })),
+      });
+
+      mensajeFactura.value = `Factura ${factura.numero_factura ?? ''} generada correctamente.`;
+      setLineas([]);
+      setServicios([]);
+      setVistaPrevia(false);
+      await cargarDatosFacturacion();
+    } catch (err) {
+      errorFactura.value = err instanceof Error ? err.message : 'No se pudo generar la factura.';
+    } finally {
+      guardandoFactura.value = false;
+    }
+  };
+
+  const filtProd = computed(() =>
+    productosDisponibles.value.filter((p) => {
+      const term = busqProd.value.toLowerCase();
+      return term.length > 0
+        && p.stock > 0
+        && [p.nombre, p.codigo, p.tipo, p.proveedor].some((value) => value?.toLowerCase().includes(term));
+    }),
   );
 
-  const filtServ = serviciosDisponibles.filter(
-    (s) => s.descripcion.toLowerCase().includes(busqServ.value.toLowerCase()) && busqServ.value.length > 0
+  const filtServ = computed(() =>
+    serviciosDisponibles.value.filter(
+      (s) => s.descripcion.toLowerCase().includes(busqServ.value.toLowerCase()) && busqServ.value.length > 0,
+    ),
   );
 
-  const clienteSeleccionado = clientesDisponibles.find((c) => c.id === cliente.value);
+  const clienteSeleccionado = computed(() => clientesDisponibles.value.find((c) => c.id === cliente.value));
+
+  onMounted(cargarDatosFacturacion);
 
     return () => {
       const cai = getCaiSucursal(sucursalId.value);
@@ -209,8 +329,21 @@ export default defineComponent({
       const usados = Math.max(secuencial(cai.facturaActual) - secuencial(cai.rangoInicio) + 1, 0);
       const restantes = Math.max(totalRango - usados, 0);
       const t = getTotales();
+      const accionBloqueada = guardandoFactura.value || cargandoDatos.value;
       return (
     <div class="space-y-5">
+      {(errorFactura.value || mensajeFactura.value || cargandoDatos.value) && (
+        <div
+          class="rounded-xl px-4 py-3 text-sm font-semibold"
+          style={{
+            background: errorFactura.value ? '#FEF2F2' : mensajeFactura.value ? '#F0FDF4' : '#EFF6FF',
+            color: errorFactura.value ? '#B91C1C' : mensajeFactura.value ? '#15803D' : '#1D4ED8',
+            border: `1px solid ${errorFactura.value ? '#FECACA' : mensajeFactura.value ? '#BBF7D0' : '#BFDBFE'}`,
+          }}
+        >
+          {errorFactura.value || mensajeFactura.value || 'Cargando productos, servicios y clientes...'}
+        </div>
+      )}
       {/* === BLOQUE CAI FISCAL === */}
       <div
         class="rounded-2xl overflow-hidden shadow-md"
@@ -233,135 +366,21 @@ export default defineComponent({
                 Datos Fiscales — CAI
               </div>
               <div class="text-xs" style={{ color: "#7DD3FC" }}>
-                Código de Autorización de Impresión — SAR Honduras
+                Sucursal emisora, condición de pago y avance del rango autorizado
               </div>
             </div>
           </div>
-          {/* Indicador de solo lectura */}
-          <div
-            class="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold"
-            style={{ background: "rgba(255,255,255,0.08)", color: "#94A3B8", border: "1px solid rgba(255,255,255,0.12)" }}
-          >
-            <Lock size={13} />
-            Solo lectura · Configurable en{" "}
-            <span style={{ color: "#38BDF8" }}>Configuración</span>
-          </div>
         </div>
 
-        {/* Campos CAI */}
+        {/* Sucursal, pago y avance CAI */}
         <div
           class="px-6 py-5"
           style={{ background: "#F8FBFF", borderTop: "1px solid #DBEAFE" }}
         >
           <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* CAI número */}
-            <div class="col-span-2 lg:col-span-4">
+            <div class="col-span-2">
               <label class="block text-xs font-bold mb-1.5" style={{ color: "#1E3A5F" }}>
-                Número de CAI
-              </label>
-              <input
-                value={cai.numero}
-                disabled={true}
-                placeholder="Automático desde configuración"
-                class="w-full px-3 py-2.5 rounded-xl text-sm outline-none font-mono"
-                style={{
-                  background: "#EFF6FF",
-                  border: "1px solid #BFDBFE",
-                  color: "#1D4ED8",
-                  cursor: "not-allowed",
-                }}
-              />
-            </div>
-
-            <div>
-              <label class="block text-xs font-bold mb-1.5" style={{ color: "#1E3A5F" }}>
-                Rango autorizado — inicio
-              </label>
-              <input
-                value={cai.rangoInicio}
-                disabled={true}
-                class="w-full px-3 py-2.5 rounded-xl text-xs outline-none font-mono"
-                style={{
-                  background: "#EFF6FF",
-                  border: "1px solid #BFDBFE",
-                  color: "#1D4ED8",
-                  cursor: "not-allowed",
-                }}
-              />
-            </div>
-
-            <div>
-              <label class="block text-xs font-bold mb-1.5" style={{ color: "#1E3A5F" }}>
-                Rango autorizado — fin
-              </label>
-              <input
-                value={cai.rangoFin}
-                disabled={true}
-                class="w-full px-3 py-2.5 rounded-xl text-xs outline-none font-mono"
-                style={{
-                  background: "#EFF6FF",
-                  border: "1px solid #BFDBFE",
-                  color: "#1D4ED8",
-                  cursor: "not-allowed",
-                }}
-              />
-            </div>
-
-            <div>
-              <label class="block text-xs font-bold mb-1.5" style={{ color: "#1E3A5F" }}>
-                Número de factura
-              </label>
-              <input
-                value={cai.facturaActual}
-                disabled={true}
-                class="w-full px-3 py-2.5 rounded-xl text-xs outline-none font-mono font-bold"
-                style={{
-                  background: "#EFF6FF",
-                  border: "2px solid #38BDF8",
-                  color: "#0369A1",
-                  cursor: "not-allowed",
-                }}
-              />
-            </div>
-
-            <div>
-              <label class="block text-xs font-bold mb-1.5" style={{ color: "#1E3A5F" }}>
-                Fecha límite de emisión
-              </label>
-              <input
-                type="date"
-                value={cai.fechaLimite}
-                disabled={true}
-                class="w-full px-3 py-2.5 rounded-xl text-xs outline-none"
-                style={{
-                  background: "#EFF6FF",
-                  border: "1px solid #BFDBFE",
-                  color: "#1D4ED8",
-                  cursor: "not-allowed",
-                }}
-              />
-            </div>
-
-            <div>
-              <label class="block text-xs font-bold mb-1.5" style={{ color: "#1E3A5F" }}>
-                RTN del negocio
-              </label>
-              <input
-                value={cai.rtn}
-                disabled={true}
-                class="w-full px-3 py-2.5 rounded-xl text-xs outline-none font-mono"
-                style={{
-                  background: "#EFF6FF",
-                  border: "1px solid #BFDBFE",
-                  color: "#1D4ED8",
-                  cursor: "not-allowed",
-                }}
-              />
-            </div>
-
-            <div>
-              <label class="block text-xs font-bold mb-1.5" style={{ color: "#1E3A5F" }}>
-                Sucursal emisora
+                Escoger sucursal
               </label>
               <div class="relative">
                 <select
@@ -378,7 +397,7 @@ export default defineComponent({
             </div>
 
             {/* Tipo de compra */}
-            <div class="col-span-2 lg:col-span-4">
+            <div class="col-span-2">
               <label class="block text-xs font-bold mb-2" style={{ color: "#1E3A5F" }}>
                 Tipo de compra
               </label>
@@ -426,7 +445,7 @@ export default defineComponent({
 
             {/* ── Indicador de uso del rango ── */}
             <div
-              class="mt-5 rounded-xl p-4"
+              class="col-span-2 lg:col-span-4 rounded-xl p-4"
               style={{
                 background: restantes <= 5 ? "#FEF2F2" : restantes <= 15 ? "#FFF7ED" : "#F0F9FF",
                 border: `1px solid ${restantes <= 5 ? "#FECACA" : restantes <= 15 ? "#FED7AA" : "#BAE6FD"}`,
@@ -436,7 +455,7 @@ export default defineComponent({
                 <div class="flex items-center gap-2">
                   <ShieldCheck size={13} style={{ color: restantes <= 5 ? "#F87171" : restantes <= 15 ? "#FB923C" : "#38BDF8" }} />
                   <span class="text-xs font-bold" style={{ color: restantes <= 5 ? "#DC2626" : restantes <= 15 ? "#C2410C" : "#0369A1" }}>
-                    Uso del rango CAI actual
+                    CAI usados en esta sucursal
                   </span>
                 </div>
                 <span class="text-xs font-bold" style={{ color: restantes <= 5 ? "#DC2626" : restantes <= 15 ? "#C2410C" : "#0369A1" }}>
@@ -504,7 +523,7 @@ export default defineComponent({
                     style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", color: "#374151" }}
                   >
                     <option value="">— Cliente de contado / Seleccionar —</option>
-                    {clientesDisponibles.map((c) => (
+                    {clientesDisponibles.value.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.nombre} · RTN: {c.rtn}
                       </option>
@@ -525,8 +544,8 @@ export default defineComponent({
                   RTN del cliente
                 </label>
                 <input
-                  placeholder={clienteSeleccionado?.rtn ?? "0000-0000-00000"}
-                  value={clienteSeleccionado?.rtn ?? ""}
+                  placeholder={clienteSeleccionado.value?.rtn ?? "0000-0000-00000"}
+                  value={clienteSeleccionado.value?.rtn ?? ""}
                   readonly
                   class="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
                   style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", color: "#111827" }}
@@ -584,12 +603,12 @@ export default defineComponent({
                 class="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm outline-none"
                 style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", color: "#111827" }}
               />
-              {filtProd.length > 0 && (
+              {filtProd.value.length > 0 && (
                 <div
                   class="absolute left-0 right-0 top-full mt-1 rounded-xl shadow-xl z-20 overflow-hidden"
                   style={{ background: "#fff", border: "1px solid #E2E8F0" }}
                 >
-                  {filtProd.map((p) => (
+                  {filtProd.value.map((p) => (
                     <button
                       key={p.id}
                       onClick={() => agregarProducto(p)}
@@ -600,10 +619,13 @@ export default defineComponent({
                           {p.nombre}
                         </div>
                         <div class="text-xs" style={{ color: "#94A3B8" }}>
-                          {p.id}
+                          {p.codigo ?? p.id} · {p.tipo ?? "Sin tipo"}{p.proveedor ? ` · ${p.proveedor}` : ""}
                         </div>
                       </div>
                       <div class="flex items-center gap-2">
+                        <span class="font-semibold text-xs" style={{ color: "#15803D" }}>
+                          Stock {p.stock}
+                        </span>
                         <span class="font-bold text-xs" style={{ color: "#38BDF8" }}>
                           {fmt(p.precio)}
                         </span>
@@ -766,12 +788,12 @@ export default defineComponent({
                 class="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm outline-none"
                 style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", color: "#111827" }}
               />
-              {filtServ.length > 0 && (
+              {filtServ.value.length > 0 && (
                 <div
                   class="absolute left-0 right-0 top-full mt-1 rounded-xl shadow-xl z-20 overflow-hidden"
                   style={{ background: "#fff", border: "1px solid #E2E8F0" }}
                 >
-                  {filtServ.map((s) => (
+                  {filtServ.value.map((s) => (
                     <button
                       key={s.id}
                       onClick={() => agregarServicio(s)}
@@ -1070,24 +1092,30 @@ export default defineComponent({
           {/* Acciones */}
           <div class="space-y-2.5">
             <button
+              onClick={guardarFactura}
+              disabled={accionBloqueada}
               class="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all shadow-md"
               style={{
                 background: "linear-gradient(135deg, #F87171, #FB923C)",
                 color: "#fff",
+                opacity: accionBloqueada ? 0.65 : 1,
                 boxShadow: "0 4px 14px rgba(248,113,113,0.35)",
               }}
             >
-              <Save size={15} /> Guardar venta
+              <Save size={15} /> {guardandoFactura.value ? "Guardando..." : "Guardar venta"}
             </button>
             <button
+              onClick={guardarFactura}
+              disabled={accionBloqueada}
               class="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all shadow-md"
               style={{
                 background: "linear-gradient(135deg, #0F172A, #1E3A5F)",
                 color: "#fff",
+                opacity: accionBloqueada ? 0.65 : 1,
                 boxShadow: "0 4px 14px rgba(15,23,42,0.30)",
               }}
             >
-              <FileText size={15} /> Generar factura
+              <FileText size={15} /> {guardandoFactura.value ? "Generando..." : "Generar factura"}
             </button>
             <div class="grid grid-cols-2 gap-2">
               <button
@@ -1192,7 +1220,7 @@ export default defineComponent({
                   <div class="flex justify-between">
                     <span style={{ color: "#64748B" }}>Cliente:</span>
                     <span style={{ color: "#374151" }}>
-                      {clienteSeleccionado?.nombre ?? "Contado"}
+                      {clienteSeleccionado.value?.nombre ?? "Contado"}
                     </span>
                   </div>
                   <div class="flex justify-between">

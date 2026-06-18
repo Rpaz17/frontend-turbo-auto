@@ -22,12 +22,14 @@ export async function getFacturas(params?: {
 }
 
 /** POST /facturas */
-export function generateFactura(factura: CreateFacturaDto): Promise<any> {
-  return request('/facturas', facturaResponseSchema, {
+export async function generateFactura(factura: CreateFacturaDto): Promise<Factura> {
+  const res = await request('/facturas', z.union([facturaSchema, facturaResponseSchema]), {
     method: 'POST',
     body: factura,
     auth: true,
   });
+  if ('data' in res) return Array.isArray(res.data) ? res.data[0] : res.data;
+  return res;
 }
 
 /** GET /facturas/{id} */

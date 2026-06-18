@@ -1,7 +1,10 @@
 <script lang="tsx">
-import { defineComponent, ref, type PropType } from 'vue';
+import { defineComponent, onMounted, ref, type PropType } from 'vue';
 import { MessageCircle, Instagram, Facebook, Phone, Globe, Plus, Trash2, Eye, Save, ToggleLeft, ToggleRight, ShieldCheck, Building2, FileText, Lock, AlertCircle } from 'lucide-vue-next';
 import { store, addCanal, updateCanal, deleteCanal, setUmbrales, persistNow, updateSucursalCai, getCaiSucursal, puedeEditarCai, type Canal, type CaiFiscal, type SesionUsuario } from '../store';
+import { createRedSocial, deleteRedSocial, getRedesSociales, updateRedSocial } from '../api/ajustes';
+import { ApiError } from '../lib/http';
+import type { RedSocial } from '../api/schemas';
 
 const iconosPorTipo: Record<string, { icon: any; color: string; bg: string }> = {
   WhatsApp: { icon: MessageCircle, color: '#25D366', bg: '#F0FDF4' },
@@ -17,6 +20,22 @@ function SeccionEncabezado({ icono, titulo, subtitulo, gradient }: { icono: any;
   return <div class="flex items-center gap-3 px-6 py-4 -mx-6 -mt-6 mb-6 rounded-t-2xl" style={{ background: gradient }}><div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(255,255,255,0.18)' }}>{icono}</div><div><div class="font-bold text-sm" style={{ color: '#fff' }}>{titulo}</div><div class="text-xs" style={{ color: 'rgba(255,255,255,0.70)' }}>{subtitulo}</div></div></div>;
 }
 
+function redSocialToCanal(red: RedSocial): Canal {
+  return {
+    id: red.id,
+    tipo: red.nombre,
+    identificador: red.tipo,
+    url: red.url,
+    activo: red.activo,
+  };
+}
+
+function messageFromError(err: unknown) {
+  if (err instanceof ApiError) return err.message;
+  if (err instanceof Error) return err.message;
+  return 'No se pudo conectar con el backend.';
+}
+
 export default defineComponent({
   name: 'Configuracion',
   props: {
@@ -28,21 +47,73 @@ export default defineComponent({
     const nuevaUrl = ref('');
     const guardado = ref(false);
     const errorFiscal = ref('');
+    const errorCanales = ref('');
+    const cargandoCanales = ref(false);
     const sucursalFiscalId = ref(props.usuario.sucursalId);
     const caiForm = ref<CaiFiscal>({ ...getCaiSucursal(sucursalFiscalId.value) });
     const umbralesForm = ref({ ...store.umbrales });
 
     const admin = () => puedeEditarCai(props.usuario);
+    const cargarCanales = async () => {
+      cargandoCanales.value = true;
+      errorCanales.value = '';
+      try {
+        const redes = await getRedesSociales();
+        store.canales.splice(0, store.canales.length, ...redes.map(redSocialToCanal));
+        persistNow();
+      } catch (err) {
+        errorCanales.value = messageFromError(err);
+      } finally {
+        cargandoCanales.value = false;
+      }
+    };
+
+    onMounted(cargarCanales);
+
     const cargarCai = (sucursalId: string) => {
       sucursalFiscalId.value = sucursalId;
       caiForm.value = { ...getCaiSucursal(sucursalId) };
       errorFiscal.value = '';
     };
 
-    const agregarCanalNuevo = () => {
+    const agregarCanalNuevo = async () => {
       if (!nuevoId.value.trim()) return;
-      addCanal({ tipo: nuevoTipo.value, identificador: nuevoId.value, url: nuevaUrl.value || '#', activo: true });
-      nuevoId.value = ''; nuevaUrl.value = '';
+      errorCanales.value = '';
+      try {
+        await createRedSocial({
+          nombre: nuevoTipo.value,
+          tipo: nuevoId.value,
+          url: nuevaUrl.value || 'https://example.com',
+          activo: true,
+        });
+        await cargarCanales();
+        nuevoId.value = ''; nuevaUrl.value = '';
+      } catch (err) {
+        errorCanales.value = messageFromError(err);
+        addCanal({ tipo: nuevoTipo.value, identificador: nuevoId.value, url: nuevaUrl.value || '#', activo: true });
+      }
+    };
+
+    const alternarCanal = async (canal: Canal) => {
+      errorCanales.value = '';
+      try {
+        await updateRedSocial(canal.id, { activo: !canal.activo });
+        await cargarCanales();
+      } catch (err) {
+        errorCanales.value = messageFromError(err);
+        updateCanal(canal.id, { activo: !canal.activo });
+      }
+    };
+
+    const eliminarCanal = async (id: number) => {
+      errorCanales.value = '';
+      try {
+        await deleteRedSocial(id);
+        await cargarCanales();
+      } catch (err) {
+        errorCanales.value = messageFromError(err);
+        deleteCanal(id);
+      }
     };
 
     const guardar = () => {
@@ -109,7 +180,9 @@ export default defineComponent({
           <div class="grid lg:grid-cols-2 gap-6">
             <div class="rounded-2xl p-6 shadow-sm" style={{ background: '#fff', border: '1px solid rgba(15,23,42,0.06)' }}>
               <SeccionEncabezado icono={<MessageCircle size={17} style={{ color: '#fff' }} />} titulo="Canales de contacto" subtitulo="WhatsApp, redes sociales y teléfono" gradient="linear-gradient(135deg, #0EA5E9 0%, #38BDF8 100%)" />
-              <div class="space-y-3 mb-5">{store.canales.map((canal) => { const c = cfg(canal); const Icon = c.icon; return <div key={canal.id} class="flex items-center gap-3 p-3 rounded-xl" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0' }}><div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: c.bg }}><Icon size={16} style={{ color: c.color }} /></div><div class="flex-1 min-w-0"><div class="text-xs font-bold" style={{ color: '#374151' }}>{canal.tipo}</div><div class="text-xs truncate" style={{ color: '#94A3B8' }}>{canal.identificador}</div></div><div class="flex items-center gap-2"><button onClick={() => updateCanal(canal.id, { activo: !canal.activo })} class="flex items-center gap-1 text-xs px-2 py-1 rounded-lg font-semibold transition-colors" style={{ background: canal.activo ? '#F0FDF4' : '#F8FAFC', color: canal.activo ? '#16A34A' : '#94A3B8' }}>{canal.activo ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}{canal.activo ? 'Activo' : 'Inactivo'}</button><button onClick={() => deleteCanal(canal.id)} class="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: '#FEF2F2' }}><Trash2 size={13} style={{ color: '#F87171' }} /></button></div></div>; })}</div>
+              {errorCanales.value && <div class="mb-3 px-3 py-2 rounded-xl text-xs font-semibold" style={{ background: '#FEF2F2', border: '1px solid #FECACA', color: '#B91C1C' }}>{errorCanales.value}</div>}
+              {cargandoCanales.value && <div class="mb-3 px-3 py-2 rounded-xl text-xs font-semibold" style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', color: '#1D4ED8' }}>Cargando canales...</div>}
+              <div class="space-y-3 mb-5">{store.canales.map((canal) => { const c = cfg(canal); const Icon = c.icon; return <div key={canal.id} class="flex items-center gap-3 p-3 rounded-xl" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0' }}><div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: c.bg }}><Icon size={16} style={{ color: c.color }} /></div><div class="flex-1 min-w-0"><div class="text-xs font-bold" style={{ color: '#374151' }}>{canal.tipo}</div><div class="text-xs truncate" style={{ color: '#94A3B8' }}>{canal.identificador}</div></div><div class="flex items-center gap-2"><button onClick={() => alternarCanal(canal)} class="flex items-center gap-1 text-xs px-2 py-1 rounded-lg font-semibold transition-colors" style={{ background: canal.activo ? '#F0FDF4' : '#F8FAFC', color: canal.activo ? '#16A34A' : '#94A3B8' }}>{canal.activo ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}{canal.activo ? 'Activo' : 'Inactivo'}</button><button onClick={() => eliminarCanal(canal.id)} class="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: '#FEF2F2' }}><Trash2 size={13} style={{ color: '#F87171' }} /></button></div></div>; })}</div>
               <div class="rounded-2xl p-4" style={{ background: '#F8FAFC', border: '1px dashed #BAE6FD' }}><div class="flex items-center gap-2 mb-3"><Plus size={14} style={{ color: '#38BDF8' }} /><span class="text-xs font-bold" style={{ color: '#0F172A' }}>Agregar canal nuevo</span></div><div class="grid grid-cols-2 gap-3"><select value={nuevoTipo.value} onInput={(e) => (nuevoTipo.value = (e.target as HTMLSelectElement).value)} class="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: '#fff', border: '1px solid #E2E8F0', color: '#374151' }}>{tiposCanal.map((t) => <option key={t}>{t}</option>)}</select><input value={nuevoId.value} onInput={(e) => (nuevoId.value = (e.target as HTMLInputElement).value)} placeholder="Usuario, número o nombre" class="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: '#fff', border: '1px solid #E2E8F0', color: '#111827' }} /><input value={nuevaUrl.value} onInput={(e) => (nuevaUrl.value = (e.target as HTMLInputElement).value)} placeholder="URL o enlace" class="col-span-2 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: '#fff', border: '1px solid #E2E8F0', color: '#111827' }} /><button onClick={agregarCanalNuevo} class="col-span-2 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold" style={{ background: '#0F172A', color: '#fff' }}><Plus size={12} /> Agregar canal</button></div></div>
             </div>
 

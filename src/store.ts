@@ -65,7 +65,6 @@ export interface Servicio {
   descripcion: string;
   categoria: string;
   precio: number;
-  empleado: string;
   notas?: string;
 }
 
@@ -162,16 +161,16 @@ const productosIniciales: Producto[] = [
 ];
 
 const serviciosIniciales: Servicio[] = [
-  { id: 'SRV-001', descripcion: 'Instalación de frenos completo', categoria: 'Instalación', precio: 450, empleado: 'Cualquier mecánico' },
-  { id: 'SRV-002', descripcion: 'Cambio de aceite y filtro', categoria: 'Mantenimiento', precio: 200, empleado: 'Cualquier mecánico' },
-  { id: 'SRV-003', descripcion: 'Alineación y balanceo', categoria: 'Suspensión', precio: 350, empleado: 'Técnico especializado' },
-  { id: 'SRV-004', descripcion: 'Diagnóstico electrónico', categoria: 'Eléctrico', precio: 300, empleado: 'Técnico especializado' },
-  { id: 'SRV-005', descripcion: 'Reparación de suspensión', categoria: 'Suspensión', precio: 800, empleado: 'Mecánico senior' },
-  { id: 'SRV-006', descripcion: 'Instalación de batería', categoria: 'Instalación', precio: 150, empleado: 'Cualquier mecánico' },
-  { id: 'SRV-007', descripcion: 'Cambio de bujías', categoria: 'Mantenimiento', precio: 180, empleado: 'Cualquier mecánico' },
-  { id: 'SRV-008', descripcion: 'Mano de obra general', categoria: 'General', precio: 250, empleado: 'Cualquier mecánico' },
-  { id: 'SRV-009', descripcion: 'Limpieza de inyectores', categoria: 'Mantenimiento', precio: 620, empleado: 'Técnico especializado' },
-  { id: 'SRV-010', descripcion: 'Instalación de alternador', categoria: 'Instalación', precio: 500, empleado: 'Mecánico senior' },
+  { id: 'SRV-001', descripcion: 'Instalación de frenos completo', categoria: 'Instalación', precio: 450 },
+  { id: 'SRV-002', descripcion: 'Cambio de aceite y filtro', categoria: 'Mantenimiento', precio: 200 },
+  { id: 'SRV-003', descripcion: 'Alineación y balanceo', categoria: 'Suspensión', precio: 350 },
+  { id: 'SRV-004', descripcion: 'Diagnóstico electrónico', categoria: 'Eléctrico', precio: 300 },
+  { id: 'SRV-005', descripcion: 'Reparación de suspensión', categoria: 'Suspensión', precio: 800 },
+  { id: 'SRV-006', descripcion: 'Instalación de batería', categoria: 'Instalación', precio: 150 },
+  { id: 'SRV-007', descripcion: 'Cambio de bujías', categoria: 'Mantenimiento', precio: 180 },
+  { id: 'SRV-008', descripcion: 'Mano de obra general', categoria: 'General', precio: 250 },
+  { id: 'SRV-009', descripcion: 'Limpieza de inyectores', categoria: 'Mantenimiento', precio: 620 },
+  { id: 'SRV-010', descripcion: 'Instalación de alternador', categoria: 'Instalación', precio: 500 },
 ];
 
 const clientesIniciales: Cliente[] = [

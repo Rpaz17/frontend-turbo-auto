@@ -1,4 +1,5 @@
 import { request } from '../lib/http';
+import { z } from 'zod';
 import {
   clientSchema,
   clientResponseSchema,
@@ -11,7 +12,8 @@ import {
 
 /** GET /clientes */
 export async function getClients(): Promise<Client[]> {
-  const res = await request('/clientes', clientResponseSchema, { auth: true });
+  const res = await request('/clientes', z.union([clientResponseSchema, z.array(clientSchema)]), { auth: true });
+  if (Array.isArray(res)) return res;
   return Array.isArray(res.data) ? res.data : [res.data];
 }
 
