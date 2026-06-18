@@ -6,6 +6,8 @@ export interface SucursalBase {
   direccion: string;
   telefono: string;
   encargado: string;
+  usuarioCliente: string;
+  correoUsuario: string;
   productos: number;
   valorStock: string;
   estado: string;

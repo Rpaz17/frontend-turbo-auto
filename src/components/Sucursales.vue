@@ -3,8 +3,8 @@ import { defineComponent, ref } from 'vue';
 import { Building2, MapPin, Package, Plus, Edit2, Trash2, X } from 'lucide-vue-next';
 import { store, addSucursal, updateSucursal, deleteSucursal, getSucursalCategoriaStock, getSucursalValorStock, formatMoney } from '../store';
 
-interface SucursalForm { nombre: string; direccion: string; telefono: string; encargado: string; }
-const formVacio: SucursalForm = { nombre: '', direccion: '', telefono: '', encargado: '' };
+interface SucursalForm { nombre: string; direccion: string; telefono: string; encargado: string; usuarioCliente: string; correoUsuario: string; }
+const formVacio: SucursalForm = { nombre: '', direccion: '', telefono: '', encargado: '', usuarioCliente: '', correoUsuario: '' };
 
 export default defineComponent({
   name: 'Sucursales',
@@ -15,7 +15,7 @@ export default defineComponent({
     const form = ref<SucursalForm>({ ...formVacio });
 
     const abrirModalEditar = (s: typeof store.sucursales[number]) => {
-      form.value = { nombre: s.nombre, direccion: s.direccion, telefono: s.telefono, encargado: s.encargado };
+      form.value = { nombre: s.nombre, direccion: s.direccion, telefono: s.telefono, encargado: s.encargado, usuarioCliente: s.usuarioCliente, correoUsuario: s.correoUsuario };
       sucursalEditando.value = s.id;
       modal.value = true;
     };
@@ -61,6 +61,7 @@ export default defineComponent({
                   </div>
                   <div class="p-5">
                     <div class="grid grid-cols-2 gap-3 mb-4"><div class="rounded-xl p-3" style={{ background: '#F8FAFC' }}><div class="flex items-center gap-1.5 mb-1"><Package size={12} style={{ color: '#94A3B8' }} /><span class="text-xs" style={{ color: '#64748B' }}>Unidades</span></div><div class="font-bold" style={{ color: '#0F172A' }}>{s.productos.toLocaleString('es-HN')}</div></div><div class="rounded-xl p-3" style={{ background: '#F8FAFC' }}><div class="text-xs mb-1" style={{ color: '#64748B' }}>Valor stock</div><div class="font-bold text-sm" style={{ color: '#38BDF8' }}>{valorStock}</div></div></div>
+                    <div class="rounded-xl p-3 mb-4" style={{ background: '#EFF6FF', border: '1px solid #BFDBFE' }}><div class="text-xs font-bold" style={{ color: '#1D4ED8' }}>{s.usuarioCliente}</div><div class="text-xs font-mono truncate" style={{ color: '#64748B' }}>{s.correoUsuario}</div></div>
                     {stock.length > 0 && <div class="mb-4"><p class="text-xs font-semibold mb-2" style={{ color: '#374151' }}>Distribución por categoría</p><div class="space-y-2">{stock.map((cat) => <div key={cat.categoria}><div class="flex justify-between text-xs mb-1"><span style={{ color: '#64748B' }}>{cat.categoria}</span><span class="font-semibold" style={{ color: '#374151' }}>{cat.cantidad}</span></div><div class="h-1.5 rounded-full" style={{ background: '#F1F5F9' }}><div class="h-full rounded-full" style={{ width: `${Math.min((cat.cantidad / maxStock) * 100, 100)}%`, background: '#38BDF8' }} /></div></div>)}</div></div>}
                     <div class="flex gap-2"><button onClick={() => abrirModalEditar(s)} class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold" style={{ background: '#F8FAFC', color: '#374151', border: '1px solid #E2E8F0' }}><Edit2 size={12} /> Editar</button><button onClick={() => confirm('¿Estás seguro de eliminar esta sucursal?') && deleteSucursal(s.id)} class="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: '#FEF2F2' }}><Trash2 size={13} style={{ color: '#F87171' }} /></button></div>
                   </div>
@@ -81,6 +82,8 @@ export default defineComponent({
             { label: 'Dirección completa', field: 'direccion' as const, placeholder: 'Calle, colonia, ciudad' },
             { label: 'Teléfono', field: 'telefono' as const, placeholder: '+504 2000-0000' },
             { label: 'Encargado / Gerente', field: 'encargado' as const, placeholder: 'Nombre del responsable' },
+            { label: 'Usuario de cliente / caja', field: 'usuarioCliente' as const, placeholder: 'Ej. Caja Occidente' },
+            { label: 'Correo del usuario', field: 'correoUsuario' as const, placeholder: 'occidente@turboauto.com' },
           ].map((f) => <div key={f.field}><label class="block text-xs font-semibold mb-1.5" style={{ color: '#374151' }}>{f.label}</label><input value={form.value[f.field]} onChange={(e) => (form.value = { ...form.value, [f.field]: (e.target as HTMLInputElement).value })} placeholder={f.placeholder} class="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', color: '#111827' }} /></div>)}</div><div class="flex gap-3 px-6 py-4" style={{ borderTop: '1px solid #F1F5F9' }}><button onClick={() => { modal.value = false; form.value = { ...formVacio }; sucursalEditando.value = null; }} class="flex-1 py-2.5 rounded-xl text-sm font-semibold" style={{ background: '#F8FAFC', color: '#64748B', border: '1px solid #E2E8F0' }}>Cancelar</button><button onClick={guardarSucursal} class="flex-1 py-2.5 rounded-xl text-sm font-semibold" style={{ background: '#0F172A', color: '#fff' }}>{sucursalEditando.value ? 'Actualizar sucursal' : 'Guardar sucursal'}</button></div></div></div>}
         </div>
       );

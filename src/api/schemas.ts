@@ -46,9 +46,10 @@ export const redSocialSchema = z.object({
 export type RedSocial = z.infer<typeof redSocialSchema>;
 
 export const createRedSocialSchema = z.object({
-  name: z.string(),
+  nombre: z.string(),
+  tipo: z.string(),
   url: z.string(),
-  active: z.boolean().optional(),
+  activo: z.boolean().optional(),
 });
 export type CreateRedSocial = z.infer<typeof createRedSocialSchema>;
 
@@ -74,22 +75,24 @@ export const createSucursalSchema = z.object({
 export type CreateSucursal = z.infer<typeof createSucursalSchema>;
 
 export const updateSucursalSchema = createSucursalSchema.partial();
+export type UpdateSucursal = z.infer<typeof updateSucursalSchema>;
 
 // ── Clientes ─────────────────────────────────────────────────────────────────
 export const clientSchema = z.object({
   id: z.string(),
-  rtn: z.string(),
+  rtn: z.string().nullable().optional(),
   nombre: z.string(),
-  telefono: z.string(),
-  direccion: z.string(),
+  telefono: z.string().nullable().optional(),
+  direccion: z.string().nullable().optional(),
   created_at: z.string(),
   activo: z.boolean(),
 });
 export type Client = z.infer<typeof clientSchema>;
 
-export const clientResponseSchema = z.array(
-  z.union([clientSchema, z.array(clientSchema)]),
-);
+export const clientResponseSchema = z.object({
+  data: z.union([clientSchema, z.array(clientSchema)]),
+  message: z.string(),
+});
 
 export const createClientSchema = z.object({
   rtn: z.string(),
@@ -113,22 +116,21 @@ export const facturaProductoSchema = z.object({
   id: z.string(),
   producto_id: z.string(),
   factura_id: z.string(),
-  cantidad: z.coerce.number(),
+  cantidad: z.number(),
   nombre: z.string(),
   precio: z.string(),
-  isv: z.string().nullable().optional(),
+  isv: z.string(),
 });
+export type FacturaProducto = z.infer<typeof facturaProductoSchema>;
+
 export const facturaServicioSchema = z.object({
-  id: z.string().optional(),
-  factura_id: z.string().optional(),
+  id: z.string(),
+  factura_id: z.string().nullable().optional(),
   descripcion: z.string(),
-  // El backend devuelve total como string ("80"); coerce lo convierte a number.
-  total: z.coerce.number(),
+  total: z.union([z.string(), z.number()]),
   nota_interna: z.string().nullable().optional(),
 });
 export type FacturaServicio = z.infer<typeof facturaServicioSchema>;
-
-export type FacturaProducto = z.infer<typeof facturaProductoSchema>;
 
 export const facturaSchema = z.object({
   id: z.string(),
@@ -139,9 +141,8 @@ export const facturaSchema = z.object({
   num_exonerado: z.string().nullable().optional(),
   numero_sag: z.string().nullable().optional(),
   sucursal_id: z.string(),
-  autor_id: z.string().nullable().optional(),
-  cliente_id: z.string(),
-  // El backend devuelve null cuando la factura es de contado.
+  autor_id: z.string(),
+  cliente_id: z.string().nullable().optional(),
   rtn_cliente: z.string().nullable().optional(),
   cliente: clientSchema.optional(),
   productos: z.array(facturaProductoSchema).optional(),
@@ -149,10 +150,14 @@ export const facturaSchema = z.object({
 });
 export type Factura = z.infer<typeof facturaSchema>;
 
+export const facturaResponseSchema = z.object({
+  data: z.union([facturaSchema, z.array(facturaSchema)]),
+});
+
 export const createFacturaDtoSchema = z.object({
   sucursal_id: z.string(),
-  cliente_id: z.string(),
   autor_id: z.string(),
+  cliente_id: z.string().optional(),
   rtn_cliente: z.string().optional(),
   num_compra_exenta: z.string().optional(),
   num_exonerado: z.string().optional(),
@@ -163,7 +168,13 @@ export const createFacturaDtoSchema = z.object({
       cantidad: z.number(),
     }),
   ).optional(),
-  servicios: z.array(facturaServicioSchema).optional(),
+  servicios: z.array(
+    z.object({
+      descripcion: z.string(),
+      total: z.number(),
+      nota_interna: z.string().optional(),
+    }),
+  ).optional(),
 });
 export type CreateFacturaDto = z.infer<typeof createFacturaDtoSchema>;
 
@@ -178,6 +189,26 @@ export const productSchema = z.object({
   precio: z.string(),
   isv: z.string().nullable().optional(),
   activo: z.boolean(),
+  tipo_producto: z.object({
+    id: z.string(),
+    tipo: z.string(),
+  }).optional(),
+  proveedor: z.object({
+    id: z.string(),
+    nombre: z.string(),
+  }).nullable().optional(),
+  inventarios: z.array(z.object({
+    id: z.string(),
+    sucursal_id: z.string(),
+    producto_id: z.string(),
+    cantidad: z.number(),
+    sucursal: z.object({
+      id: z.string(),
+      nombre: z.string(),
+      direccion: z.string().optional(),
+      activo: z.boolean().optional(),
+    }).optional(),
+  })).optional(),
 });
 export type Product = z.infer<typeof productSchema>;
 
@@ -189,17 +220,20 @@ export const productImageUrlSchema = z.object({
 export type ProductImageUrl = z.infer<typeof productImageUrlSchema>;
 
 export const createProductSchema = z.object({
-  tipo_producto_id: z.string().optional(),
+  tipo_producto_id: z.union([z.string(), z.number()]).optional(),
+  tipo: z.string().optional(),
   proveedor_id: z.string().optional(),
+  proveedor: z.string().optional(),
   codigo: z.string(),
   nombre: z.string(),
-  precio: z.string(),
+  precio: z.union([z.string(), z.number()]),
   isv: z.string().optional(),
   activo: z.boolean().optional(),
 });
 export type CreateProduct = z.infer<typeof createProductSchema>;
 
 export const updateProductSchema = createProductSchema.partial();
+export type UpdateProduct = z.infer<typeof updateProductSchema>;
 
 // ── Inventario ────────────────────────────────────────────────────────────────
 export const inventarioSchema = z.object({
@@ -208,6 +242,17 @@ export const inventarioSchema = z.object({
   cantidad: z.number(),
 });
 export type Inventario = z.infer<typeof inventarioSchema>;
+
+export const inventarioDetalleSchema = inventarioSchema.extend({
+  id: z.string(),
+  producto: productSchema.optional(),
+  sucursal: sucursalSchema.extend({
+    activo: z.boolean().optional(),
+  }).optional(),
+});
+export type InventarioDetalle = z.infer<typeof inventarioDetalleSchema>;
+
+export const inventarioListSchema = z.array(inventarioDetalleSchema);
 
 export const inventarioSucursalSchema = z.object({
   sucursal_id: z.string(),
@@ -315,3 +360,25 @@ export const createCaiRangoSchema = z.object({
   rango_inicio: z.number(),
   rango_final: z.number(),
 });
+
+// ── Servicios / Mano de obra ────────────────────────────────────────────────
+export const servicioSchema = z.object({
+  id: z.string(),
+  descripcion: z.string(),
+  categoria: z.string(),
+  precio: z.number(),
+  notas: z.string().optional(),
+});
+export type ServicioApi = z.infer<typeof servicioSchema>;
+
+export const servicioListSchema = z.array(servicioSchema);
+
+export const createServicioSchema = z.object({
+  descripcion: z.string(),
+  categoria: z.string(),
+  precio: z.number(),
+  notas: z.string().optional(),
+});
+export type CreateServicioApi = z.infer<typeof createServicioSchema>;
+export const updateServicioSchema = createServicioSchema.partial();
+export type UpdateServicioApi = z.infer<typeof updateServicioSchema>;
