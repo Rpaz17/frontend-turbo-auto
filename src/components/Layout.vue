@@ -6,7 +6,6 @@ import {
   Menu, X, AlertTriangle, Trash2,
 } from "lucide-vue-next";
 import logoUrl from '../assets/turbo-auto-logo.png';
-import { getSucursalActiva, type SesionUsuario } from '../store';
 
 type Page = "panel" | "inventario" | "ventas" | "clientes" | "reportes" | "sucursales" | "configuracion" | "storefront";
 

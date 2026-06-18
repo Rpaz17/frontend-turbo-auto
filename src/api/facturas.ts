@@ -36,8 +36,6 @@ export function generateFactura(factura: CreateFacturaDto): Promise<Factura> {
     body: factura,
     auth: true,
   });
-  if ('data' in res) return Array.isArray(res.data) ? res.data[0] : res.data;
-  return res;
 }
 
 /** GET /facturas/{id} */
@@ -50,4 +48,3 @@ export async function getFacturaById(id: string): Promise<Factura> {
 export function exportFactura(id: string): Promise<string> {
   return request(`/facturas/${id}/exportar`, z.string(), { auth: true });
 }
-

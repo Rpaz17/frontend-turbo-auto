@@ -74,7 +74,6 @@ export const createSucursalSchema = z.object({
 export type CreateSucursal = z.infer<typeof createSucursalSchema>;
 
 export const updateSucursalSchema = createSucursalSchema.partial();
-export type UpdateSucursal = z.infer<typeof updateSucursalSchema>;
 
 // ── Clientes ─────────────────────────────────────────────────────────────────
 export const clientSchema = z.object({
@@ -201,7 +200,6 @@ export const createProductSchema = z.object({
 export type CreateProduct = z.infer<typeof createProductSchema>;
 
 export const updateProductSchema = createProductSchema.partial();
-export type UpdateProduct = z.infer<typeof updateProductSchema>;
 
 // ── Inventario ────────────────────────────────────────────────────────────────
 export const inventarioSchema = z.object({
@@ -274,22 +272,9 @@ export const reporteProductosMasVendidosSchema = z.array(
 
 export const reporteResumenSchema = z.object({
   data: z.object({
-    clientes_frecuentes: z.array(
-      z.object({
-        cliente_id: z.string(),
-        nombre: z.string(),
-        rtn: z.string().nullable(),
-        total_facturas: z.number(),
-        monto_total: z.string(),
-      }),
-    ),
+    clientes_frecuentes: z.array(z.any()),
     ventas_por_periodo: z.any(),
-    productos_mas_vendidos: z.array(
-      z.object({
-        nombre: z.string(),
-        cantidad_total: z.number(),
-      }),
-    ),
+    productos_mas_vendidos: z.array(z.any()),
   }),
   message: z.string(),
 });
