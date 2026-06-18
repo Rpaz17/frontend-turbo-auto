@@ -1,11 +1,12 @@
 <script lang="tsx">
 import { defineComponent, onMounted, computed, type PropType } from 'vue';
-import { MessageCircle, Instagram, Facebook, Phone, Star, MapPin, Zap, ArrowLeft, ShoppingBag, Globe, Loader2, AlertCircle } from 'lucide-vue-next';
+import { MessageCircle, Instagram, Facebook, Phone, Star, MapPin, ArrowLeft, ShoppingBag, Globe, Loader2, AlertCircle } from 'lucide-vue-next';
 import { type Product } from '../api/schemas';
 import { formatPrecio } from '../composables/useProductos';
 import { useInventarioProducto } from '../composables/useInventarioProducto';
 import { useResenas } from '../composables/useResenas';
 import { useCanales } from '../composables/useCanales';
+import logoUrl from '../assets/turbo-auto-logo.png';
 
 const iconosPorTipo: Record<string, { icon: any; color: string; bg: string; label: string }> = {
   WhatsApp: { icon: MessageCircle, color: '#25D366', bg: '#F0FDF4', label: 'WhatsApp' },
@@ -66,9 +67,7 @@ export default defineComponent({
           <header style={{ background: '#0F172A' }} class="sticky top-0 z-40">
             <div class="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
               <div class="flex items-center gap-3">
-                <div class="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#38BDF8' }}>
-                  <Zap size={16} style={{ color: '#0F172A' }} />
-                </div>
+                <img src={logoUrl} alt="Turbo Auto F&M 504" class="w-10 h-10 object-contain" />
                 <div>
                   <div class="text-white font-bold text-sm">Turbo Auto F&M 504</div>
                   <div class="text-xs font-semibold" style={{ color: '#38BDF8' }}>Repuestos automotrices</div>

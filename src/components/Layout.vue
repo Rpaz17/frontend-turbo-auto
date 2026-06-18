@@ -3,8 +3,9 @@ import { defineComponent, ref, type PropType } from 'vue';
 import {
   LayoutDashboard, Package, ShoppingCart, Users, BarChart3,
   Building2, Settings, Store, LogOut, Bell,
-  Zap, Menu, X, AlertTriangle, Trash2,
+  Menu, X, AlertTriangle, Trash2,
 } from "lucide-vue-next";
+import logoUrl from '../assets/turbo-auto-logo.png';
 
 type Page = "panel" | "inventario" | "ventas" | "clientes" | "reportes" | "sucursales" | "configuracion" | "storefront";
 
@@ -53,12 +54,9 @@ export default defineComponent({
 
   const getCurrentItem = () => navItems.find((n) => n.id === props.currentPage);
   const HeaderIcon = () => {
-    const item = getCurrentItem();
-    if (!item) return null;
-    const Icon = item.icon;
     return (
-      <div class="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: `${item.accentColor}15` }}>
-        <Icon size={15} style={{ color: item.accentColor }} />
+      <div class="w-9 h-9 rounded-xl flex items-center justify-center overflow-hidden" style={{ background: '#0F172A' }}>
+        <img src={logoUrl} alt="Turbo Auto F&M 504" class="w-8 h-8 object-contain" />
       </div>
     );
   };
@@ -88,15 +86,7 @@ export default defineComponent({
           style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}
         >
           <div class="flex items-center gap-3">
-            <div
-              class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg"
-              style={{
-                background: "linear-gradient(135deg, #F87171, #FB923C)",
-                boxShadow: "0 4px 14px rgba(248,113,113,0.40)",
-              }}
-            >
-              <Zap size={18} style={{ color: "#fff" }} />
-            </div>
+            <img src={logoUrl} alt="Turbo Auto F&M 504" class="w-12 h-12 object-contain flex-shrink-0 drop-shadow-xl" />
             <div>
               <div class="text-white font-extrabold text-sm leading-none tracking-wide">
                 Turbo Auto

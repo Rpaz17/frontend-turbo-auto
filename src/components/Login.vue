@@ -1,7 +1,8 @@
 <script lang="tsx">
 import { defineComponent, ref } from 'vue';
-import { Lock, User, AlertCircle, Zap, ArrowLeft } from "lucide-vue-next";
+import { Lock, User, AlertCircle, ArrowLeft } from "lucide-vue-next";
 import { useAuth } from "../composables/useAuth";
+import logoUrl from '../assets/turbo-auto-logo.png';
 
 
 export default defineComponent({
@@ -27,66 +28,27 @@ export default defineComponent({
 
     return () => {
       return (
-    <div class="min-h-screen flex" style={{ background: "linear-gradient(135deg, #0F172A 0%, #111827 60%, #1E293B 100%)" }}>
-      {/* Left panel */}
-      <div class="hidden lg:flex flex-col justify-between w-1/2 p-12 relative overflow-hidden">
-        <div class="absolute inset-0 opacity-5">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} class="absolute border border-white rounded-full"
-              style={{ width: `${(i + 1) * 120}px`, height: `${(i + 1) * 120}px`, top: "50%", left: "50%", transform: "translate(-50%, -50%)" }} />
-          ))}
-        </div>
-        <div class="relative z-10">
-          <div class="flex items-center gap-3 mb-2">
-            <div class="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "#38BDF8" }}>
-              <Zap size={22} class="text-white" style={{ color: "#0F172A" }} />
-            </div>
-            <div>
-              <div class="text-white font-bold text-xl leading-none">Turbo Auto</div>
-              <div class="text-xs font-semibold tracking-widest" style={{ color: "#38BDF8" }}>F&M 504</div>
-            </div>
-          </div>
-        </div>
-        <div class="relative z-10 space-y-6">
-          <h2 class="text-white text-4xl font-bold leading-tight">
-            Sistema de gestión<br />
-            <span style={{ color: "#38BDF8" }}>automotriz</span><br />
-            integral
-          </h2>
-          <p class="text-slate-400 text-sm leading-relaxed max-w-sm">
-            Administra tu inventario, facturación, clientes y sucursales desde un solo lugar. Diseñado para negocios de repuestos.
-          </p>
-          <div class="flex gap-4">
-            {[
-              { label: "Sucursales", value: "3" },
-              { label: "Productos", value: "2,400+" },
-              { label: "Clientes", value: "850+" },
-            ].map((stat) => (
-              <div key={stat.label} class="rounded-xl p-4 flex-1" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                <div class="text-2xl font-bold text-white">{stat.value}</div>
-                <div class="text-xs text-slate-400">{stat.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div class="relative z-10 text-slate-500 text-xs">
-          © 2024 Turbo Auto F&M 504. Todos los derechos reservados.
+    <div class="min-h-screen lg:grid lg:grid-cols-2" style={{ background: "#F8FAFC" }}>
+      {/* Brand panel */}
+      <div
+        class="hidden lg:flex items-center justify-center p-12 relative overflow-hidden"
+        style={{ background: "linear-gradient(135deg, #082F49 0%, #0F4C81 48%, #0B1324 100%)" }}
+      >
+        <div class="absolute inset-0" style={{ background: "radial-gradient(circle at center, rgba(56,189,248,0.22) 0%, rgba(56,189,248,0.08) 32%, transparent 62%)" }} />
+        <div class="absolute w-[520px] h-[520px] rounded-full blur-3xl opacity-70" style={{ background: "radial-gradient(circle, rgba(248,113,113,0.42) 0%, rgba(239,68,68,0.20) 38%, transparent 70%)" }} />
+        <div class="relative w-full max-w-md aspect-square flex items-center justify-center">
+          <div class="absolute w-80 h-80 rounded-full blur-2xl" style={{ background: "rgba(248,113,113,0.22)" }} />
+          <img src={logoUrl} alt="Turbo Auto F&M 504" class="relative w-full max-w-sm h-auto object-contain drop-shadow-2xl" />
         </div>
       </div>
 
       {/* Right panel - login form */}
-      <div class="flex-1 flex items-center justify-center p-8">
+      <div class="min-h-screen lg:min-h-0 flex items-center justify-center p-6 sm:p-8" style={{ background: "#F8FAFC" }}>
         <div class="w-full max-w-sm">
-          <div class="rounded-2xl p-8 shadow-2xl" style={{ background: "rgba(255,255,255,0.97)" }}>
+          <div class="rounded-2xl p-8 shadow-xl" style={{ background: "#fff", border: "1px solid #E2E8F0" }}>
             {/* Logo mobile */}
-            <div class="lg:hidden flex items-center gap-3 mb-8 justify-center">
-              <div class="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "#38BDF8" }}>
-                <Zap size={22} style={{ color: "#0F172A" }} />
-              </div>
-              <div>
-                <div class="font-bold text-xl" style={{ color: "#0F172A" }}>Turbo Auto</div>
-                <div class="text-xs font-semibold tracking-widest" style={{ color: "#38BDF8" }}>F&M 504</div>
-              </div>
+            <div class="lg:hidden flex mb-8 justify-center">
+              <img src={logoUrl} alt="Turbo Auto F&M 504" class="w-36 h-auto object-contain" />
             </div>
 
             <button

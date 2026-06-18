@@ -1,10 +1,12 @@
 <script lang="tsx">
 import { defineComponent, ref, computed } from 'vue';
-import { Search, MessageCircle, Instagram, Facebook, Phone, Star, MapPin, Zap, ShoppingBag, Globe, Loader2, AlertCircle } from 'lucide-vue-next';
+import { Search, MessageCircle, Instagram, Facebook, Phone, Star, MapPin, ShoppingBag, Globe, Loader2 } from 'lucide-vue-next';
 import { useProductos, formatPrecio } from '../composables/useProductos';
 import { useSucursales } from '../composables/useSucursales';
 import { useCanales } from '../composables/useCanales';
 import ProductDetail from './ProductDetail.vue';
+import InternalErrorScreen from './InternalErrorScreen.vue';
+import logoUrl from '../assets/turbo-auto-logo.png';
 
 const iconosPorTipo: Record<string, { icon: any; color: string; bg: string; label: string }> = {
   WhatsApp: { icon: MessageCircle, color: '#25D366', bg: '#F0FDF4', label: 'WhatsApp' },
@@ -85,9 +87,7 @@ export default defineComponent({
           <header style={{ background: '#0F172A' }} class="sticky top-0 z-40">
             <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
               <div class="flex items-center gap-3">
-                <div class="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#38BDF8' }}>
-                  <Zap size={16} style={{ color: '#0F172A' }} />
-                </div>
+                <img src={logoUrl} alt="Turbo Auto F&M 504" class="w-10 h-10 object-contain" />
                 <div>
                   <div class="text-white font-bold">Turbo Auto F&M 504</div>
                   <div class="text-xs font-semibold" style={{ color: '#38BDF8' }}>Repuestos automotrices</div>
@@ -133,9 +133,12 @@ export default defineComponent({
                 <Loader2 size={18} class="animate-spin" /> Cargando productos…
               </div>
             ) : error.value ? (
-              <div class="flex flex-col items-center gap-2 py-16 text-sm" style={{ color: '#DC2626' }}>
-                <AlertCircle size={20} /> {error.value}
-              </div>
+              <InternalErrorScreen
+                title="No pudimos cargar el catálogo"
+                message={error.value}
+                actionLabel="Reintentar"
+                onRetry={() => window.location.reload()}
+              />
             ) : (
               <>
                 <p class="text-sm mb-5" style={{ color: '#94A3B8' }}>{filtrados.value.length} productos encontrados</p>
@@ -202,7 +205,7 @@ export default defineComponent({
                 </div>
               </div>
               <div class="pt-6 text-center text-xs" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', color: '#475569' }}>
-                © 2024 Turbo Auto F&M 504. Todos los derechos reservados.
+                Turbo Auto F&M 504. Todos los derechos reservados.
               </div>
             </div>
           </footer>

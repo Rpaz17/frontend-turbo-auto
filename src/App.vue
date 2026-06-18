@@ -1,5 +1,5 @@
 <script lang="tsx">
-import { defineComponent, ref } from 'vue';
+import { defineComponent, onErrorCaptured, ref } from 'vue';
 import Login from './components/Login.vue';
 import Layout from './components/Layout.vue';
 import Dashboard from './components/Dashboard.vue';
@@ -10,6 +10,7 @@ import Reportes from './components/Reportes.vue';
 import Sucursales from './components/Sucursales.vue';
 import Configuracion from './components/Configuracion.vue';
 import Storefront from './components/Storefront.vue';
+import InternalErrorScreen from './components/InternalErrorScreen.vue';
 import type { Page, SucursalBase } from './types';
 import { hasToken, logout } from './api';
 
@@ -49,6 +50,13 @@ export default defineComponent({
     const paginaActual = ref<Page>('panel');
     const mostrarLogin = ref(false);
     const sucursales = ref<SucursalBase[]>(sucursalesIniciales);
+    const appError = ref<Error | null>(null);
+
+    onErrorCaptured((err) => {
+      appError.value = err instanceof Error ? err : new Error(String(err));
+      console.error('Error interno de la aplicación:', err);
+      return false;
+    });
 
     const setSucursales = (next: any) => {
       sucursales.value = typeof next === 'function' ? next(sucursales.value) : next;
@@ -68,6 +76,22 @@ export default defineComponent({
     };
 
     return () => {
+      if (appError.value) {
+        return (
+          <InternalErrorScreen
+            title="Error interno"
+            message="Ocurrió un problema inesperado en el panel. Puedes intentar recargar la vista."
+            actionLabel="Recargar vista"
+            secondaryLabel="Ir al inicio"
+            onRetry={() => (appError.value = null)}
+            onSecondary={() => {
+              appError.value = null;
+              paginaActual.value = 'panel';
+              mostrarLogin.value = false;
+            }}
+          />
+        );
+      }
       if (!autenticado.value && mostrarLogin.value) {
         return <Login onLogin={() => (autenticado.value = true)} onVolver={() => (mostrarLogin.value = false)} />;
       }
