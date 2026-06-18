@@ -10,6 +10,7 @@ import { useClientes } from '../composables/useClientes';
 import { useSucursales } from '../composables/useSucursales';
 import type { Product, Client, Sucursal } from '../api/schemas';
 import { generateFactura, exportFactura, getUserIdFromToken } from '../api';
+import { getCaiSucursal, getSucursalActiva, store, type SesionUsuario } from '../store';
 
 interface LineaProducto {
   id: number;
@@ -41,12 +42,9 @@ const CAI_PREDETERMINADO = {
 
 // Extrae el número secuencial del formato 001-001-01-XXXXXXXX
 function secuencial(correlativo: string): number {
-  return parseInt(correlativo.split("-").at(-1) ?? "0", 10);
+  const parts = correlativo.split("-");
+  return parseInt(parts[parts.length - 1] ?? "0", 10);
 }
-
-const totalRango = secuencial(CAI_PREDETERMINADO.rangoFin) - secuencial(CAI_PREDETERMINADO.rangoInicio) + 1; // 50
-const usados = secuencial(CAI_PREDETERMINADO.facturaActual) - secuencial(CAI_PREDETERMINADO.rangoInicio) + 1; // 38
-const restantes = totalRango - usados; // 12
 
 let lineaId = 1;
 let servicioId = 1;
@@ -242,6 +240,12 @@ export default defineComponent({
     );
 
     return () => {
+      const cai = getCaiSucursal(sucursalId.value);
+      const sucursalActiva = getSucursalActiva(sucursalId.value);
+      const totalRango = Math.max(secuencial(cai.rangoFin) - secuencial(cai.rangoInicio) + 1, 1);
+      const usados = Math.max(secuencial(cai.facturaActual) - secuencial(cai.rangoInicio) + 1, 0);
+      const restantes = Math.max(totalRango - usados, 0);
+      const t = getTotales();
       return (
     <div class="space-y-5">
       {/* === BLOQUE CAI FISCAL === */}
@@ -495,7 +499,7 @@ export default defineComponent({
                             <input
                               type="checkbox"
                               checked={l.exento}
-                              onChange={(e) => actualizarLinea(l.id, "exento", e.target.checked)}
+                              onChange={(e) => actualizarLinea(l.id, "exento", (e.target as HTMLInputElement).checked)}
                               class="rounded"
                             />
                           </td>

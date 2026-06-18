@@ -6,6 +6,7 @@ import {
   Menu, X, AlertTriangle, Trash2,
 } from "lucide-vue-next";
 import logoUrl from '../assets/turbo-auto-logo.png';
+import { getSucursalActiva, type SesionUsuario } from '../store';
 
 type Page = "panel" | "inventario" | "ventas" | "clientes" | "reportes" | "sucursales" | "configuracion" | "storefront";
 
@@ -29,7 +30,7 @@ const navItems: {
 
 export default defineComponent({
   name: 'Layout',
-  props: { currentPage: { type: String, required: true } },
+  props: { currentPage: { type: String, required: true }, usuario: { type: Object as PropType<SesionUsuario | null>, default: null } },
   emits: ["navigate", "logout"],
   setup(props, { emit, slots }) {
   const onNavigate = (page: Page) => emit('navigate', page);
@@ -63,6 +64,7 @@ export default defineComponent({
 
 
     return () => {
+      const sucursalActiva = props.usuario ? getSucursalActiva(props.usuario.sucursalId) : null;
       return (
     <div class="flex h-screen overflow-hidden" style={{ background: "#F8FAFC" }}>
       {/* Mobile overlay */}
@@ -188,9 +190,12 @@ export default defineComponent({
               AD
             </div>
             <div class="flex-1 min-w-0">
-              <div class="text-white text-sm font-semibold truncate">Administrador</div>
+              <div class="text-white text-sm font-semibold truncate">{props.usuario?.nombre ?? 'Usuario'}</div>
               <div class="text-xs truncate" style={{ color: "#475569" }}>
-                admin@turboauto.com
+                {props.usuario?.email ?? 'sesion@turboauto.com'}
+              </div>
+              <div class="text-xs truncate" style={{ color: "#38BDF8" }}>
+                {sucursalActiva?.nombre ?? 'Sin sucursal'}
               </div>
             </div>
           </div>
@@ -230,7 +235,7 @@ export default defineComponent({
                   {getCurrentItem()?.label ?? "Panel general"}
                 </h1>
                 <p class="text-xs mt-0.5" style={{ color: "#94A3B8" }}>
-                  Turbo Auto F&amp;M 504
+                  {sucursalActiva?.nombre ?? 'Turbo Auto F&M 504'}
                 </p>
               </div>
             </div>
