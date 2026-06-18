@@ -3,7 +3,50 @@ import { defineComponent, ref, onMounted } from 'vue';
 import { TrendingUp, Package, Users, FileText, ShoppingCart, ArrowRight, ArrowUpRight, Flame } from "lucide-vue-next";
 import { InteractiveBarChart } from "./InteractiveCharts";
 import { getResumenGeneral } from '../api';
+import { formatMoney } from '../store';
 import { getToken } from '../lib/token';
+
+interface FacturaReporte {
+  fecha_emision: string;
+  total: string | number;
+}
+
+interface ReporteResumen {
+  clientes_frecuentes: Array<{
+    cliente_id?: string;
+    id?: string;
+    nombre: string;
+    total_facturas?: number;
+    total_compras?: number;
+    monto_total?: string | number;
+  }>;
+  ventas_por_periodo: {
+    facturas?: FacturaReporte[];
+    resumen?: {
+      monto_bruto?: string | number;
+      total_facturas?: number;
+      clientes_unicos?: number;
+      promedio_por_factura?: string | number;
+      monto_productos?: string | number;
+      monto_servicios?: string | number;
+      factura_mas_alta?: string | number;
+      factura_mas_baja?: string | number;
+      servicios_mas_solicitados?: Array<{
+        descripcion: string;
+        cantidad: string | number;
+        monto: string | number;
+      }>;
+    };
+  } | null;
+  productos_mas_vendidos: Array<{
+    id?: string;
+    nombre: string;
+    cantidad_total?: number;
+    total_vendido?: number;
+  }>;
+}
+
+type ProductoMasVendido = ReporteResumen['productos_mas_vendidos'][number];
 
 export default defineComponent({
   name: 'Dashboard',
@@ -34,7 +77,9 @@ export default defineComponent({
       return 0;
     };
 
-    const buildMonthlySales = (facturas: Array<{ fecha_emision?: string; total?: string }>) => {
+    const n = (value: unknown): number => numberFromMoney(value);
+
+    const buildMonthlySales = (facturas: Array<{ fecha_emision?: string; total?: string | number }>) => {
       const map = new Map<string, number>();
       for (const factura of facturas) {
         if (!factura?.fecha_emision) continue;
@@ -60,11 +105,11 @@ export default defineComponent({
         });
     };
 
-    const topProductos = ref<{ nombre: string; cantidad_total: number }[]>([]);
-    const resumenVentas = ref<any | null>(null);
-    const clientesFrecuentes = ref<any[]>([]);
+    const topProductos = ref<ProductoMasVendido[]>([]);
+    const resumenVentas = ref<ReporteResumen['ventas_por_periodo']>(null);
+    const clientesFrecuentes = ref<ReporteResumen['clientes_frecuentes']>([]);
     const ventasMensuales = ref<Array<{ label: string; value: number }>>([]);
-    const topServicios = ref<Array<{ descripcion: string; cantidad: number; monto: string }>>([]);
+    const topServicios = ref<Array<{ descripcion: string; cantidad: number; monto: number }>>([]);
     const cargando = ref(false);
     const error = ref<string | null>(null);
 
@@ -72,12 +117,16 @@ export default defineComponent({
       console.log('Token:', getToken());
       cargando.value = true;
       try {
-        const res = await getResumenGeneral(desde, hasta);
-        topProductos.value = res.data.productos_mas_vendidos ?? [];
-        resumenVentas.value = res.data.ventas_por_periodo ?? null;
-        clientesFrecuentes.value = res.data.clientes_frecuentes ?? [];
+        const res = await getResumenGeneral(desde, hasta) as ReporteResumen;
+        topProductos.value = res.productos_mas_vendidos ?? [];
+        resumenVentas.value = res.ventas_por_periodo ?? null;
+        clientesFrecuentes.value = res.clientes_frecuentes ?? [];
         ventasMensuales.value = buildMonthlySales(resumenVentas.value?.facturas ?? []);
-        topServicios.value = resumenVentas.value?.resumen?.servicios_mas_solicitados ?? [];
+        topServicios.value = (resumenVentas.value?.resumen?.servicios_mas_solicitados ?? []).map((servicio) => ({
+          ...servicio,
+          cantidad: n(servicio.cantidad),
+          monto: n(servicio.monto),
+        }));
       } catch (e) {
         console.error('Error cargando datos del dashboard:', e);
         error.value = 'No se pudieron cargar los datos del dashboard';
@@ -97,7 +146,7 @@ export default defineComponent({
       const kpis = [
         {
           label: "Ventas del mes",
-          value: resumenVentas.value ? `L. ${Number(resumenVentas.value.resumen?.monto_bruto ?? 0).toLocaleString()}` : "L. 0",
+          value: resumenVentas.value ? formatMoney(n(resumenVentas.value.resumen?.monto_bruto ?? 0)) : "L. 0.00",
           sub: resumenVentas.value ? `${resumenVentas.value.resumen?.total_facturas ?? 0} facturas` : "Sin datos",
           trend: "up",
           icon: TrendingUp,
@@ -120,7 +169,7 @@ export default defineComponent({
         {
           label: "Facturas del período",
           value: resumenVentas.value ? String(resumenVentas.value.resumen?.total_facturas ?? 0) : "0",
-          sub: resumenVentas.value ? `Promedio L. ${resumenVentas.value.resumen?.promedio_por_factura ?? 0}` : "Sin datos",
+          sub: resumenVentas.value ? `Promedio ${formatMoney(n(resumenVentas.value.resumen?.promedio_por_factura ?? 0))}` : "Sin datos",
           trend: "up",
           icon: FileText,
           gradient: "linear-gradient(135deg, #1E293B 0%, #0F172A 100%)",
@@ -223,7 +272,7 @@ export default defineComponent({
                       <div class="min-w-0">
                         <p class="text-xs font-semibold leading-snug truncate" style={{ color: "#374151" }}>{servicio.descripcion}</p>
                         <p class="text-xs" style={{ color: "#9A3412" }}>
-                          {servicio.cantidad} servicios · L. {servicio.monto}
+                          {servicio.cantidad} servicios · {formatMoney(servicio.monto)}
                         </p>
                       </div>
                     </div>
@@ -279,7 +328,7 @@ export default defineComponent({
                         </div>
                         <div class="flex-1 min-w-0">
                           <p class="text-xs font-semibold truncate" style={{ color: "#0F172A" }}>{p.nombre}</p>
-                          <p class="text-xs" style={{ color: "#94A3B8" }}>{p.cantidad_total} vendidos</p>
+                            <p class="text-xs" style={{ color: "#94A3B8" }}>{(p.cantidad_total ?? p.total_vendido ?? 0)} vendidos</p>
                         </div>
                       </div>
                     );
