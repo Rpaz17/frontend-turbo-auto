@@ -274,9 +274,22 @@ export const reporteProductosMasVendidosSchema = z.array(
 
 export const reporteResumenSchema = z.object({
   data: z.object({
-    clientes_frecuentes: z.array(z.any()),
+    clientes_frecuentes: z.array(
+      z.object({
+        cliente_id: z.string(),
+        nombre: z.string(),
+        rtn: z.string().nullable(),
+        total_facturas: z.number(),
+        monto_total: z.string(),
+      }),
+    ),
     ventas_por_periodo: z.any(),
-    productos_mas_vendidos: z.array(z.any()),
+    productos_mas_vendidos: z.array(
+      z.object({
+        nombre: z.string(),
+        cantidad_total: z.number(),
+      }),
+    ),
   }),
   message: z.string(),
 });

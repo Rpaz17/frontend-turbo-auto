@@ -1,7 +1,8 @@
 <script lang="tsx">
-import { defineComponent, ref, type PropType } from 'vue';
+import { defineComponent, ref, type PropType, OnMounted } from 'vue';
 import { TrendingUp, Package, AlertTriangle, Users, FileText, Plus, ShoppingCart, ArrowRight, ArrowUpRight, ArrowDownRight, Flame } from "lucide-vue-next";
 import { InteractiveAreaChart } from "./InteractiveCharts";
+import { getResumenGeneral, getProductosMasVendidos } from '../api';
 
 const ventasData = [
   { label: "Ene", ventas: 38500, compras: 22000 },
@@ -146,7 +147,7 @@ export default defineComponent({
         {kpis.map((kpi) => {
           const Icon = kpi.icon;
           return (
-            <div
+            <divf
               key={kpi.label}
               class="rounded-2xl p-5 shadow-md relative overflow-hidden"
               style={{ background: kpi.gradient }}
