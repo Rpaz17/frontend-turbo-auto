@@ -29,7 +29,7 @@ const navItems: {
 
 export default defineComponent({
   name: 'Layout',
-  props: { currentPage: { type: String, required: true }, usuario: { type: Object as PropType<SesionUsuario | null>, default: null } },
+  props: { currentPage: { type: String, required: true } },
   emits: ["navigate", "logout"],
   setup(props, { emit, slots }) {
   const onNavigate = (page: Page) => emit('navigate', page);
@@ -63,7 +63,6 @@ export default defineComponent({
 
 
     return () => {
-      const sucursalActiva = props.usuario ? getSucursalActiva(props.usuario.sucursalId) : null;
       return (
     <div class="flex h-screen overflow-hidden" style={{ background: "#F8FAFC" }}>
       {/* Mobile overlay */}
@@ -189,12 +188,9 @@ export default defineComponent({
               AD
             </div>
             <div class="flex-1 min-w-0">
-              <div class="text-white text-sm font-semibold truncate">{props.usuario?.nombre ?? 'Usuario'}</div>
+              <div class="text-white text-sm font-semibold truncate">Administrador</div>
               <div class="text-xs truncate" style={{ color: "#475569" }}>
-                {props.usuario?.email ?? 'sesion@turboauto.com'}
-              </div>
-              <div class="text-xs truncate" style={{ color: "#38BDF8" }}>
-                {sucursalActiva?.nombre ?? 'Sin sucursal'}
+                admin@turboauto.com
               </div>
             </div>
           </div>
@@ -234,7 +230,7 @@ export default defineComponent({
                   {getCurrentItem()?.label ?? "Panel general"}
                 </h1>
                 <p class="text-xs mt-0.5" style={{ color: "#94A3B8" }}>
-                  {sucursalActiva?.nombre ?? 'Turbo Auto F&M 504'}
+                  Turbo Auto F&amp;M 504
                 </p>
               </div>
             </div>
