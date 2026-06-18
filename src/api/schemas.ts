@@ -234,31 +234,39 @@ export const resenaListSchema = z.array(resenaSchema);
 // ── Reportes ──────────────────────────────────────────────────────────────────
 export const reporteClientesFrecuentesSchema = z.array(
   z.object({
-    id: z.string(),
+    cliente_id: z.string().optional(),
+    id: z.string().optional(),
     nombre: z.string(),
-    total_compras: z.number(),
+    rtn: z.string().nullable().optional(),
+    total_facturas: z.number().optional(),
+    total_compras: z.number().optional(),
+    monto_total: z.union([z.string(), z.number()]).optional(),
   }),
 );
 
 export const reporteVentasPorPeriodoSchema = z.object({
-  total_ventas: z.number(),
-  monto_total: z.number(),
+  facturas: z.array(z.any()).optional(),
+  resumen: z.any().optional(),
+  total_ventas: z.number().optional(),
+  monto_total: z.number().optional(),
 });
 
 export const reporteVentasPorSucursalSchema = z.array(
   z.object({
     sucursal_id: z.string(),
     sucursal_nombre: z.string(),
-    total_ventas: z.number(),
-    monto_total: z.number(),
+    total_facturas: z.number().optional(),
+    total_ventas: z.number().optional(),
+    monto_total: z.union([z.string(), z.number()]),
   }),
 );
 
 export const reporteProductosMasVendidosSchema = z.array(
   z.object({
-    id: z.string(),
+    id: z.string().optional(),
     nombre: z.string(),
-    total_vendido: z.number(),
+    cantidad_total: z.number().optional(),
+    total_vendido: z.number().optional(),
   }),
 );
 

@@ -6,43 +6,55 @@ import {
   reporteProductosMasVendidosSchema,
   reporteResumenSchema,
 } from './schemas';
+import { z } from 'zod';
+
+const wrap = <T extends z.ZodTypeAny>(schema: T) => z.union([schema, z.object({ data: schema, message: z.string().optional(), total: z.number().optional() })]);
+
+function unwrap<T>(value: T | { data: T }): T {
+  return value && typeof value === 'object' && 'data' in value ? value.data : value;
+}
 
 /** GET /reportes/clientes-frecuentes */
-export function getClientesFrecuentes(desde: string, hasta: string): Promise<any> {
-  return request('/reportes/clientes-frecuentes', reporteClientesFrecuentesSchema, {
+export async function getClientesFrecuentes(desde: string, hasta: string): Promise<any> {
+  const res = await request('/reportes/clientes-frecuentes', wrap(reporteClientesFrecuentesSchema), {
     query: { desde, hasta },
     auth: true,
   });
+  return unwrap(res);
 }
 
 /** GET /reportes/ventas-por-periodo */
-export function getVentasPorPeriodo(desde: string, hasta: string): Promise<any> {
-  return request('/reportes/ventas-por-periodo', reporteVentasPorPeriodoSchema, {
+export async function getVentasPorPeriodo(desde: string, hasta: string): Promise<any> {
+  const res = await request('/reportes/ventas-por-periodo', wrap(reporteVentasPorPeriodoSchema.nullable()), {
     query: { desde, hasta },
     auth: true,
   });
+  return unwrap(res);
 }
 
 /** GET /reportes/ventas-sucursal */
-export function getVentasPorSucursal(desde: string, hasta: string): Promise<any> {
-  return request('/reportes/ventas-sucursal', reporteVentasPorSucursalSchema, {
+export async function getVentasPorSucursal(desde: string, hasta: string): Promise<any> {
+  const res = await request('/reportes/ventas-sucursal', wrap(reporteVentasPorSucursalSchema), {
     query: { desde, hasta },
     auth: true,
   });
+  return unwrap(res);
 }
 
 /** GET /reportes/productos-mas-vendidos */
-export function getProductosMasVendidos(desde: string, hasta: string): Promise<any> {
-  return request('/reportes/productos-mas-vendidos', reporteProductosMasVendidosSchema, {
+export async function getProductosMasVendidos(desde: string, hasta: string): Promise<any> {
+  const res = await request('/reportes/productos-mas-vendidos', wrap(reporteProductosMasVendidosSchema), {
     query: { desde, hasta },
     auth: true,
   });
+  return unwrap(res);
 }
 
 /** GET /reportes */
-export function getResumenGeneral(desde: string, hasta: string): Promise<any> {
-  return request('/reportes', reporteResumenSchema, {
+export async function getResumenGeneral(desde: string, hasta: string): Promise<any> {
+  const res = await request('/reportes', reporteResumenSchema, {
     query: { desde, hasta },
     auth: true,
   });
+  return res.data;
 }
