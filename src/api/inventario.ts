@@ -15,3 +15,16 @@ export function getInventario(
     signal,
   });
 }
+
+/** PATCH /inventario/stock — fija la cantidad exacta de stock. */
+export function setInventarioStock(
+  sucursal: string,
+  producto: string,
+  cantidad: number,
+): Promise<Inventario> {
+  return request('/inventario/stock', inventarioSchema, {
+    method: 'PATCH',
+    body: { sucursal, producto, cantidad },
+    auth: true,
+  });
+}
