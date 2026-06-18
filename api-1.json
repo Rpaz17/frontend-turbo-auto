@@ -484,7 +484,8 @@
                   "data": {
                     "id": 1,
                     "nombre": "Sucursal Central",
-                    "direccion": "Av. Principal 123"
+                    "direccion": "Av. Principal 123",
+                    "codigo_facturacion": "001"
                   },
                   "message": "Sucursal creada correctamente"
                 }
@@ -523,12 +524,14 @@
                     {
                       "id": 1,
                       "nombre": "Sucursal Central",
-                      "direccion": "Av. Principal 123"
+                      "direccion": "Av. Principal 123",
+                      "codigo_facturacion": "001"
                     },
                     {
                       "id": 2,
                       "nombre": "Sucursal Norte",
-                      "direccion": "Calle Secundaria 456"
+                      "direccion": "Calle Secundaria 456",
+                      "codigo_facturacion": "002"
                     }
                   ],
                   "message": "Listado de sucursales actualizado"
@@ -578,7 +581,8 @@
                   "data": {
                     "id": 1,
                     "nombre": "Sucursal Central",
-                    "direccion": "Av. Principal 123"
+                    "direccion": "Av. Principal 123",
+                    "codigo_facturacion": "001"
                   },
                   "message": "Sucursal eliminada correctamente"
                 }
@@ -635,7 +639,8 @@
                   "data": {
                     "id": 1,
                     "nombre": "Sucursal Central Actualizada",
-                    "direccion": "Av. Principal 123"
+                    "direccion": "Av. Principal 123",
+                    "codigo_facturacion": "001"
                   },
                   "message": "Sucursal actualizada correctamente"
                 }
@@ -688,7 +693,7 @@
                     "nombre": "Juan Pérez",
                     "telefono": "1234567890",
                     "direccion": "Calle Principal 123",
-                    "created_at": "2026-06-16T19:41:06.526Z",
+                    "created_at": "2026-06-18T00:10:35.819Z",
                     "activo": true
                   },
                   "message": "Cliente creado exitosamente"
@@ -718,7 +723,7 @@
                       "nombre": "Juan Pérez",
                       "telefono": "1234567890",
                       "direccion": "Calle Principal 123",
-                      "created_at": "2026-06-16T19:41:06.527Z",
+                      "created_at": "2026-06-18T00:10:35.820Z",
                       "activo": true
                     },
                     {
@@ -727,7 +732,7 @@
                       "nombre": "María Gómez",
                       "telefono": "0987654321",
                       "direccion": "Avenida Secundaria 456",
-                      "created_at": "2026-06-16T19:41:06.527Z",
+                      "created_at": "2026-06-18T00:10:35.820Z",
                       "activo": false
                     }
                   ],
@@ -768,7 +773,7 @@
                     "nombre": "Juan Pérez",
                     "telefono": "1234567890",
                     "direccion": "Calle Principal 123",
-                    "created_at": "2026-06-16T19:41:06.527Z",
+                    "created_at": "2026-06-18T00:10:35.820Z",
                     "activo": true
                   },
                   "message": "Cliente encontrado"
@@ -829,7 +834,7 @@
                     "nombre": "Juan Pérez Actualizado",
                     "telefono": "1234567890",
                     "direccion": "Calle Principal 123",
-                    "created_at": "2026-06-16T19:41:06.527Z",
+                    "created_at": "2026-06-18T00:10:35.820Z",
                     "activo": true
                   },
                   "message": "Cliente actualizado exitosamente"
@@ -1810,7 +1815,8 @@
                   "descripcion": "CAI Principal 2026",
                   "codigo_cai": "69904E-2E3C67-E24D9C-9C5D23-6A1B2C-3D",
                   "fecha_vencimiento": "2026-12-31",
-                  "fecha_emision": "2026-01-01"
+                  "fecha_emision": "2026-01-01",
+                  "sucursal_id": "1"
                 }
               }
             }
@@ -1851,7 +1857,8 @@
                     "descripcion": "CAI Principal 2026",
                     "codigo_cai": "69904E-2E3C67-E24D9C-9C5D23-6A1B2C-3D",
                     "fecha_vencimiento": "2026-12-31",
-                    "fecha_emision": "2026-01-01"
+                    "fecha_emision": "2026-01-01",
+                    "sucursal_id": "1"
                   }
                 ]
               }
@@ -1888,7 +1895,8 @@
                   "descripcion": "CAI Principal 2026",
                   "codigo_cai": "69904E-2E3C67-E24D9C-9C5D23-6A1B2C-3D",
                   "fecha_vencimiento": "2026-12-31",
-                  "fecha_emision": "2026-01-01"
+                  "fecha_emision": "2026-01-01",
+                  "sucursal_id": "1"
                 }
               }
             }
@@ -1939,18 +1947,26 @@
                   {
                     "id": "550e8400-e29b-41d4-a716-446655440000",
                     "cai_id": "550e8400-e29b-41d4-a716-446655440001",
-                    "sucursal_id": 1,
-                    "establecimiento": "001",
                     "punto_emision": "001",
                     "tipo_documento": "01",
                     "rango_inicio": 1,
                     "rango_final": 100,
-                    "correlativo_actual": 50,
+                    "correlativo_actual": 0,
                     "estado": "ACTIVO",
                     "fecha_activacion": "2026-01-01T00:00:00Z",
                     "fecha_cierre": null,
                     "created_at": "2026-01-01T00:00:00Z",
-                    "updated_at": "2026-01-01T00:00:00Z"
+                    "updated_at": "2026-01-01T00:00:00Z",
+                    "cai": {
+                      "id": "550e8400-e29b-41d4-a716-446655440001",
+                      "codigo_cai": "69904E-2E3C67-E24D9C-9C5D23-6A1B2C-3D",
+                      "sucursal_id": "1",
+                      "sucursal": {
+                        "id": "1",
+                        "nombre": "Sucursal Central",
+                        "codigo_facturacion": "001"
+                      }
+                    }
                   }
                 ]
               }
@@ -1986,12 +2002,11 @@
                 "example": {
                   "id": "550e8400-e29b-41d4-a716-446655440000",
                   "cai_id": "550e8400-e29b-41d4-a716-446655440000",
-                  "establecimiento": "001",
                   "punto_emision": "001",
                   "tipo_documento": "01",
                   "rango_inicio": 1,
                   "rango_final": 100,
-                  "correlativo_actual": 50
+                  "correlativo_actual": 0
                 }
               }
             }
@@ -2004,7 +2019,6 @@
                   "statusCode": 400,
                   "message": [
                     "cai_id should not be empty",
-                    "establecimiento should not be empty",
                     "punto_emision should not be empty",
                     "tipo_documento should not be empty",
                     "rango_inicio should not be empty",
@@ -2488,11 +2502,16 @@
           "direccion": {
             "type": "string",
             "maxLength": 300
+          },
+          "codigo_facturacion": {
+            "type": "string",
+            "pattern": "^\\d{3}$"
           }
         },
         "required": [
           "nombre",
-          "direccion"
+          "direccion",
+          "codigo_facturacion"
         ]
       },
       "UpdateSucursalDto": {
@@ -2505,8 +2524,15 @@
           "direccion": {
             "type": "string",
             "maxLength": 300
+          },
+          "codigo_facturacion": {
+            "type": "string",
+            "pattern": "^\\d{3}$"
           }
-        }
+        },
+        "required": [
+          "codigo_facturacion"
+        ]
       },
       "CreateClientDto": {
         "type": "object",
@@ -2596,11 +2622,6 @@
             "description": "Id de la sucursal",
             "example": "1"
           },
-          "autor_id": {
-            "type": "string",
-            "description": "Id del autor (usuario)",
-            "example": "1"
-          },
           "cliente_id": {
             "type": "string",
             "description": "Id del cliente",
@@ -2653,8 +2674,7 @@
           }
         },
         "required": [
-          "sucursal_id",
-          "autor_id"
+          "sucursal_id"
         ]
       },
       "UpdateProductDto": {
@@ -2733,13 +2753,18 @@
           },
           "fecha_emision": {
             "type": "string"
+          },
+          "sucursal_id": {
+            "type": "number",
+            "minimum": 1
           }
         },
         "required": [
           "descripcion",
           "codigo_cai",
           "fecha_vencimiento",
-          "fecha_emision"
+          "fecha_emision",
+          "sucursal_id"
         ]
       },
       "CreateCaiRangoDto": {
@@ -2748,14 +2773,6 @@
           "cai_id": {
             "type": "string",
             "format": "uuid"
-          },
-          "sucursal_id": {
-            "type": "number",
-            "minimum": 1
-          },
-          "establecimiento": {
-            "type": "string",
-            "pattern": "^\\d{3}$"
           },
           "punto_emision": {
             "type": "string",
@@ -2780,8 +2797,6 @@
         },
         "required": [
           "cai_id",
-          "sucursal_id",
-          "establecimiento",
           "punto_emision",
           "tipo_documento",
           "rango_inicio",

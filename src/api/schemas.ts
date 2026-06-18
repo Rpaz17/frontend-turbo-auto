@@ -149,17 +149,11 @@ export const facturaSchema = z.object({
 });
 export type Factura = z.infer<typeof facturaSchema>;
 
-export const facturaResponseSchema = z.union([
-  // POST /facturas devuelve la factura directamente (sin wrapper data).
-  facturaSchema,
-  // GET /facturas devuelve { data: [...] }.
-  z.object({ data: z.union([facturaSchema, z.array(facturaSchema)]) }),
-]);
-
 export const createFacturaDtoSchema = z.object({
   sucursal_id: z.string(),
   cliente_id: z.string(),
   autor_id: z.string(),
+  rtn_cliente: z.string().optional(),
   num_compra_exenta: z.string().optional(),
   num_exonerado: z.string().optional(),
   numero_sag: z.string().optional(),
@@ -168,7 +162,7 @@ export const createFacturaDtoSchema = z.object({
       producto_id: z.string(),
       cantidad: z.number(),
     }),
-  ),
+  ).optional(),
   servicios: z.array(facturaServicioSchema).optional(),
 });
 export type CreateFacturaDto = z.infer<typeof createFacturaDtoSchema>;

@@ -154,7 +154,7 @@ export default defineComponent({
 
       generando.value = true;
       try {
-        const payload = {
+        const payload: Record<string, any> = {
           sucursal_id: sucursalId.value,
           cliente_id: clienteId.value,
           autor_id: getUserIdFromToken(),
@@ -167,6 +167,9 @@ export default defineComponent({
             total: s.total
           }))
         };
+        if (clienteSeleccionado.value?.rtn) {
+          payload.rtn_cliente = clienteSeleccionado.value.rtn;
+        }
 
         const res = await generateFactura(payload);
         const facturaId = res?.id;
