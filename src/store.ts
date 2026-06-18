@@ -8,10 +8,44 @@ export interface SucursalBase {
   direccion: string;
   telefono: string;
   encargado: string;
+  usuarioCliente: string;
+  correoUsuario: string;
   productos: number;
   valorStock: string;
   estado: string;
   stock: { categoria: string; cantidad: number }[];
+  cai: CaiFiscal;
+}
+
+export type RolUsuario = 'admin' | 'sucursal';
+
+export interface UsuarioSistema {
+  id: string;
+  nombre: string;
+  email: string;
+  password: string;
+  rol: RolUsuario;
+  sucursalId: string;
+}
+
+export interface SesionUsuario {
+  id: string;
+  nombre: string;
+  email: string;
+  rol: RolUsuario;
+  sucursalId: string;
+}
+
+export interface CaiFiscal {
+  numero: string;
+  rangoInicio: string;
+  rangoFin: string;
+  facturaActual: string;
+  fechaLimite: string;
+  rtn: string;
+  razonSocial: string;
+  correoFiscal: string;
+  software: string;
 }
 
 export interface Producto {
@@ -85,6 +119,7 @@ export interface Umbrales {
 
 interface AppState {
   sucursales: SucursalBase[];
+  usuarios: UsuarioSistema[];
   productos: Producto[];
   servicios: Servicio[];
   clientes: Cliente[];
@@ -99,9 +134,16 @@ export const categoriasProducto = ['Todos los tipos', 'Filtros', 'Frenos', 'Moto
 export const categoriasServicio = ['Todas las categorías', 'Instalación', 'Mantenimiento', 'Suspensión', 'Eléctrico', 'General'];
 
 const sucursalesIniciales: SucursalBase[] = [
-  { id: 'SUC-001', nombre: 'Sucursal Central', direccion: 'Col. Kennedy, Av. La Paz #145, Tegucigalpa', telefono: '+504 2235-1234', encargado: 'María Reyes', productos: 0, valorStock: 'L. 0.00', estado: 'Activa', stock: [] },
-  { id: 'SUC-002', nombre: 'Sucursal Norte', direccion: 'Blvd. del Norte #890, San Pedro Sula', telefono: '+504 2553-4567', encargado: 'Jorge Álvarez', productos: 0, valorStock: 'L. 0.00', estado: 'Activa', stock: [] },
-  { id: 'SUC-003', nombre: 'Sucursal Sur', direccion: 'Col. Villa Real, 3a Calle SO, Choluteca', telefono: '+504 2882-6789', encargado: 'Ana Mejía', productos: 0, valorStock: 'L. 0.00', estado: 'Activa', stock: [] },
+  { id: 'SUC-001', nombre: 'Sucursal Central', direccion: 'Col. Kennedy, Av. La Paz #145, Tegucigalpa', telefono: '+504 2235-1234', encargado: 'María Reyes', usuarioCliente: 'Caja Central', correoUsuario: 'central@turboauto.com', productos: 0, valorStock: 'L. 0.00', estado: 'Activa', stock: [], cai: { numero: '2F4A8B-C91E3D-7A2150-B4F839-DE6C02-A5', rangoInicio: '001-001-01-00000001', rangoFin: '001-001-01-00000050', facturaActual: '001-001-01-00000038', fechaLimite: '2025-03-31', rtn: '0501-2015-00248', razonSocial: 'Turbo Auto F&M 504 S. de R.L.', correoFiscal: 'facturacion@turboauto.com', software: 'Turbo Auto F&M 504 POS' } },
+  { id: 'SUC-002', nombre: 'Sucursal Norte', direccion: 'Blvd. del Norte #890, San Pedro Sula', telefono: '+504 2553-4567', encargado: 'Jorge Álvarez', usuarioCliente: 'Caja Norte', correoUsuario: 'norte@turboauto.com', productos: 0, valorStock: 'L. 0.00', estado: 'Activa', stock: [], cai: { numero: '7C1B2D-A04F9E-3B8172-C6D004-FA9031-B2', rangoInicio: '002-001-01-00000001', rangoFin: '002-001-01-00000075', facturaActual: '002-001-01-00000018', fechaLimite: '2025-06-30', rtn: '0501-2015-00248', razonSocial: 'Turbo Auto F&M 504 S. de R.L.', correoFiscal: 'facturacion.norte@turboauto.com', software: 'Turbo Auto F&M 504 POS' } },
+  { id: 'SUC-003', nombre: 'Sucursal Sur', direccion: 'Col. Villa Real, 3a Calle SO, Choluteca', telefono: '+504 2882-6789', encargado: 'Ana Mejía', usuarioCliente: 'Caja Sur', correoUsuario: 'sur@turboauto.com', productos: 0, valorStock: 'L. 0.00', estado: 'Activa', stock: [], cai: { numero: '9D8E7F-B12C3A-5D6048-E8A113-CF5570-D4', rangoInicio: '003-001-01-00000001', rangoFin: '003-001-01-00000060', facturaActual: '003-001-01-00000009', fechaLimite: '2025-09-30', rtn: '0501-2015-00248', razonSocial: 'Turbo Auto F&M 504 S. de R.L.', correoFiscal: 'facturacion.sur@turboauto.com', software: 'Turbo Auto F&M 504 POS' } },
+];
+
+export const usuariosIniciales: UsuarioSistema[] = [
+  { id: 'USR-001', nombre: 'Administrador', email: 'admin@turboauto.com', password: 'admin123', rol: 'admin', sucursalId: 'SUC-001' },
+  { id: 'USR-002', nombre: 'Caja Central', email: 'central@turboauto.com', password: 'central123', rol: 'sucursal', sucursalId: 'SUC-001' },
+  { id: 'USR-003', nombre: 'Caja Norte', email: 'norte@turboauto.com', password: 'norte123', rol: 'sucursal', sucursalId: 'SUC-002' },
+  { id: 'USR-004', nombre: 'Caja Sur', email: 'sur@turboauto.com', password: 'sur123', rol: 'sucursal', sucursalId: 'SUC-003' },
 ];
 
 const productosIniciales: Producto[] = [
@@ -160,6 +202,7 @@ const ventasIniciales: Venta[] = [
 function defaultState(): AppState {
   return {
     sucursales: structuredCloneSafe(sucursalesIniciales),
+    usuarios: structuredCloneSafe(usuariosIniciales),
     productos: structuredCloneSafe(productosIniciales),
     servicios: structuredCloneSafe(serviciosIniciales),
     clientes: structuredCloneSafe(clientesIniciales),
@@ -167,6 +210,11 @@ function defaultState(): AppState {
     umbrales: { critico: 5, advertencia: 10, sobrestock: 200, diasSinMovimiento: 30 },
     ventas: structuredCloneSafe(ventasIniciales),
   };
+}
+
+function caiDefault(sucursalId: string): CaiFiscal {
+  const base = sucursalesIniciales.find((s) => s.id === sucursalId)?.cai ?? sucursalesIniciales[0].cai;
+  return structuredCloneSafe(base);
 }
 
 function structuredCloneSafe<T>(value: T): T {
@@ -202,6 +250,17 @@ export function resetDemoData() {
   normalizeAllProductStocks();
   refreshSucursalSummaries();
   persistNow();
+}
+
+export function autenticarUsuario(email: string, password: string, sucursalId?: string): SesionUsuario | null {
+  const usuario = store.usuarios.find((u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
+  if (!usuario) return null;
+  const sucursalAsignada = usuario.rol === 'admin' && sucursalId ? sucursalId : usuario.sucursalId;
+  return { id: usuario.id, nombre: usuario.nombre, email: usuario.email, rol: usuario.rol, sucursalId: sucursalAsignada };
+}
+
+export function puedeEditarCai(usuario: SesionUsuario | null | undefined) {
+  return usuario?.rol === 'admin';
 }
 
 export function normalizeAllProductStocks() {
@@ -281,8 +340,9 @@ export function deleteServicio(id: string) {
   if (idx >= 0) store.servicios.splice(idx, 1);
 }
 
-export function addSucursal(data: Pick<SucursalBase, 'nombre' | 'direccion' | 'telefono' | 'encargado'>) {
-  const nueva: SucursalBase = { ...data, id: nextId('SUC', store.sucursales), productos: 0, valorStock: 'L. 0.00', estado: 'Activa', stock: [] };
+export function addSucursal(data: Pick<SucursalBase, 'nombre' | 'direccion' | 'telefono' | 'encargado' | 'usuarioCliente' | 'correoUsuario'>) {
+  const id = nextId('SUC', store.sucursales);
+  const nueva: SucursalBase = { ...data, id, productos: 0, valorStock: 'L. 0.00', estado: 'Activa', stock: [], cai: caiDefault(id) };
   store.sucursales.push(nueva);
   store.productos.forEach((producto) => { producto.stockPorSucursal[nueva.id] = 0; });
   refreshSucursalSummaries();
@@ -299,6 +359,22 @@ export function deleteSucursal(id: string) {
   if (idx >= 0) store.sucursales.splice(idx, 1);
   store.productos.forEach((p) => delete p.stockPorSucursal[id]);
   refreshSucursalSummaries();
+}
+
+export function getSucursalActiva(sucursalId: string) {
+  return store.sucursales.find((s) => s.id === sucursalId) ?? store.sucursales[0];
+}
+
+export function getCaiSucursal(sucursalId: string) {
+  return getSucursalActiva(sucursalId)?.cai ?? caiDefault(sucursalId);
+}
+
+export function updateSucursalCai(sucursalId: string, data: CaiFiscal, usuario: SesionUsuario | null | undefined) {
+  if (!puedeEditarCai(usuario)) {
+    throw new Error('Solo el usuario administrador puede cambiar el CAI.');
+  }
+  const idx = store.sucursales.findIndex((s) => s.id === sucursalId);
+  if (idx >= 0) store.sucursales[idx].cai = { ...data };
 }
 
 export function addCliente(data: Pick<Cliente, 'nombre' | 'telefono' | 'email' | 'ciudad' | 'rtn'>) {

@@ -5,6 +5,7 @@ import {
   User, Package, ShieldCheck, Lock, Save, X,
   CreditCard, Banknote, Wrench,
 } from "lucide-vue-next";
+import { getCaiSucursal, getSucursalActiva, store, type SesionUsuario } from '../store';
 
 interface LineaProducto {
   id: number;
@@ -52,23 +53,11 @@ const clientesDisponibles = [
   { id: "CLI-003", nombre: "Taller Morales & Asociados", rtn: "0801-1979-65432" },
 ];
 
-const CAI_PREDETERMINADO = {
-  numero: "2F4A8B-C91E3D-7A2150-B4F839-DE6C02-A5",
-  rangoInicio: "001-001-01-00000001",
-  rangoFin:    "001-001-01-00000050",
-  facturaActual: "001-001-01-00000038",
-  fechaLimite: "2025-03-31",
-  rtn: "0501-2015-00248",
-};
-
 // Extrae el número secuencial del formato 001-001-01-XXXXXXXX
 function secuencial(correlativo: string): number {
-  return parseInt(correlativo.split("-").at(-1) ?? "0", 10);
+  const parts = correlativo.split("-");
+  return parseInt(parts[parts.length - 1] ?? "0", 10);
 }
-
-const totalRango = secuencial(CAI_PREDETERMINADO.rangoFin) - secuencial(CAI_PREDETERMINADO.rangoInicio) + 1; // 50
-const usados = secuencial(CAI_PREDETERMINADO.facturaActual) - secuencial(CAI_PREDETERMINADO.rangoInicio) + 1; // 38
-const restantes = totalRango - usados; // 12
 
 let lineaId = 1;
 let servicioId = 1;
@@ -76,9 +65,10 @@ let servicioId = 1;
 
 export default defineComponent({
   name: 'NuevaVenta',
-  
-  
-  setup() {
+  props: {
+    usuario: { type: Object as PropType<SesionUsuario>, required: true },
+  },
+  setup(props) {
   
 
   const cliente = ref("");
@@ -98,15 +88,11 @@ export default defineComponent({
   const servicioPersonalizado = ref({ descripcion: "", precio: 0 });
   const setServicioPersonalizado = (next: any) => { servicioPersonalizado.value = typeof next === 'function' ? next(servicioPersonalizado.value) : next; };
 
-  // CAI: siempre viene de configuración, es solo lectura en esta pantalla
-  const caiNumero = CAI_PREDETERMINADO.numero;
-  const caiRangoInicio = CAI_PREDETERMINADO.rangoInicio;
-  const caiRangoFin = CAI_PREDETERMINADO.rangoFin;
-  const caiFactura = CAI_PREDETERMINADO.facturaActual;
-  const caiFecha = CAI_PREDETERMINADO.fechaLimite;
-  const caiRtn = CAI_PREDETERMINADO.rtn;
-  const sucursal = ref("Sucursal Central");
-  const setSucursal = (next: any) => { sucursal.value = typeof next === 'function' ? next(sucursal.value) : next; };
+  const sucursalId = ref(props.usuario.sucursalId);
+  const setSucursalId = (next: any) => {
+    if (props.usuario.rol !== 'admin') return;
+    sucursalId.value = typeof next === 'function' ? next(sucursalId.value) : next;
+  };
   const tipoPago = ref<"contado" | "credito">("contado");
   const setTipoPago = (next: any) => { tipoPago.value = typeof next === 'function' ? next(tipoPago.value) : next; };
 
@@ -203,7 +189,7 @@ export default defineComponent({
     return { subtotal, subtotalServicios, descuentos, exento, exonerado, isv15, total };
   };
 
-  const t = calcTotales();
+  const getTotales = calcTotales;
   const fmt = (n: number) => `L. ${n.toLocaleString("es-HN", { minimumFractionDigits: 2 })}`;
 
   const filtProd = productosDisponibles.filter(
@@ -217,6 +203,12 @@ export default defineComponent({
   const clienteSeleccionado = clientesDisponibles.find((c) => c.id === cliente.value);
 
     return () => {
+      const cai = getCaiSucursal(sucursalId.value);
+      const sucursalActiva = getSucursalActiva(sucursalId.value);
+      const totalRango = Math.max(secuencial(cai.rangoFin) - secuencial(cai.rangoInicio) + 1, 1);
+      const usados = Math.max(secuencial(cai.facturaActual) - secuencial(cai.rangoInicio) + 1, 0);
+      const restantes = Math.max(totalRango - usados, 0);
+      const t = getTotales();
       return (
     <div class="space-y-5">
       {/* === BLOQUE CAI FISCAL === */}
@@ -268,8 +260,7 @@ export default defineComponent({
                 Número de CAI
               </label>
               <input
-                value={caiNumero}
-                onChange={(e) => setCaiNumero((e.target as HTMLInputElement).value)}
+                value={cai.numero}
                 disabled={true}
                 placeholder="Automático desde configuración"
                 class="w-full px-3 py-2.5 rounded-xl text-sm outline-none font-mono"
@@ -287,8 +278,7 @@ export default defineComponent({
                 Rango autorizado — inicio
               </label>
               <input
-                value={caiRangoInicio}
-                onChange={(e) => setCaiRangoInicio((e.target as HTMLInputElement).value)}
+                value={cai.rangoInicio}
                 disabled={true}
                 class="w-full px-3 py-2.5 rounded-xl text-xs outline-none font-mono"
                 style={{
@@ -305,8 +295,7 @@ export default defineComponent({
                 Rango autorizado — fin
               </label>
               <input
-                value={caiRangoFin}
-                onChange={(e) => setCaiRangoFin((e.target as HTMLInputElement).value)}
+                value={cai.rangoFin}
                 disabled={true}
                 class="w-full px-3 py-2.5 rounded-xl text-xs outline-none font-mono"
                 style={{
@@ -323,8 +312,7 @@ export default defineComponent({
                 Número de factura
               </label>
               <input
-                value={caiFactura}
-                onChange={(e) => setCaiFactura((e.target as HTMLInputElement).value)}
+                value={cai.facturaActual}
                 disabled={true}
                 class="w-full px-3 py-2.5 rounded-xl text-xs outline-none font-mono font-bold"
                 style={{
@@ -342,8 +330,7 @@ export default defineComponent({
               </label>
               <input
                 type="date"
-                value={caiFecha}
-                onChange={(e) => setCaiFecha((e.target as HTMLInputElement).value)}
+                value={cai.fechaLimite}
                 disabled={true}
                 class="w-full px-3 py-2.5 rounded-xl text-xs outline-none"
                 style={{
@@ -360,8 +347,7 @@ export default defineComponent({
                 RTN del negocio
               </label>
               <input
-                value={caiRtn}
-                onChange={(e) => setCaiRtn((e.target as HTMLInputElement).value)}
+                value={cai.rtn}
                 disabled={true}
                 class="w-full px-3 py-2.5 rounded-xl text-xs outline-none font-mono"
                 style={{
@@ -379,14 +365,13 @@ export default defineComponent({
               </label>
               <div class="relative">
                 <select
-                  value={sucursal.value}
-                  onChange={(e) => setSucursal((e.target as HTMLInputElement).value)}
+                  value={sucursalId.value}
+                  disabled={props.usuario.rol !== 'admin'}
+                  onChange={(e) => setSucursalId((e.target as HTMLSelectElement).value)}
                   class="w-full px-3 py-2.5 rounded-xl text-xs outline-none appearance-none"
-                  style={{ background: "#fff", border: "1px solid #BFDBFE", color: "#1E3A5F" }}
+                  style={{ background: props.usuario.rol === 'admin' ? "#fff" : "#EFF6FF", border: "1px solid #BFDBFE", color: "#1E3A5F", cursor: props.usuario.rol === 'admin' ? 'pointer' : 'not-allowed' }}
                 >
-                  <option>Sucursal Central</option>
-                  <option>Sucursal Norte</option>
-                  <option>Sucursal Sur</option>
+                  {store.sucursales.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
                 </select>
                 <ChevronDown size={12} class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#64748B" }} />
               </div>
@@ -541,7 +526,8 @@ export default defineComponent({
                 </label>
                 <input
                   placeholder={clienteSeleccionado?.rtn ?? "0000-0000-00000"}
-                  defaultValue={clienteSeleccionado?.rtn ?? ""}
+                  value={clienteSeleccionado?.rtn ?? ""}
+                  readonly
                   class="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
                   style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", color: "#111827" }}
                 />
@@ -554,12 +540,13 @@ export default defineComponent({
                   Sucursal de venta
                 </label>
                 <select
+                  value={sucursalId.value}
+                  disabled={props.usuario.rol !== 'admin'}
+                  onChange={(e) => setSucursalId((e.target as HTMLSelectElement).value)}
                   class="w-full px-3 py-2.5 rounded-xl text-sm outline-none appearance-none"
-                  style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", color: "#374151" }}
+                  style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", color: "#374151", cursor: props.usuario.rol === 'admin' ? 'pointer' : 'not-allowed' }}
                 >
-                  <option>Sucursal Central</option>
-                  <option>Sucursal Norte</option>
-                  <option>Sucursal Sur</option>
+                  {store.sucursales.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
                 </select>
               </div>
             </div>
@@ -720,7 +707,7 @@ export default defineComponent({
                             <input
                               type="checkbox"
                               checked={l.exento}
-                              onChange={(e) => actualizarLinea(l.id, "exento", e.target.checked)}
+                              onChange={(e) => actualizarLinea(l.id, "exento", (e.target as HTMLInputElement).checked)}
                               class="rounded"
                             />
                           </td>
@@ -1152,7 +1139,7 @@ export default defineComponent({
                   Turbo Auto F&M 504
                 </div>
                 <div class="text-xs mt-0.5" style={{ color: "#7DD3FC" }}>
-                  RTN: {caiRtn}
+                  RTN: {cai.rtn}
                 </div>
                 <div
                   class="text-xs font-extrabold mt-1 tracking-widest"
@@ -1161,7 +1148,7 @@ export default defineComponent({
                   FACTURA FISCAL
                 </div>
                 <div class="text-xs mt-0.5" style={{ color: "#94A3B8" }}>
-                  No.: {caiFactura}
+                  No.: {cai.facturaActual}
                 </div>
               </div>
 
@@ -1174,24 +1161,24 @@ export default defineComponent({
                   Datos fiscales — CAI
                 </p>
                 <p class="text-xs font-mono break-all" style={{ color: "#1D4ED8" }}>
-                  {caiNumero}
+                  {cai.numero}
                 </p>
                 <div class="flex gap-4 mt-1">
                   <span class="text-xs" style={{ color: "#64748B" }}>
-                    Desde: <span class="font-mono" style={{ color: "#0369A1" }}>{caiRangoInicio}</span>
+                    Desde: <span class="font-mono" style={{ color: "#0369A1" }}>{cai.rangoInicio}</span>
                   </span>
                   <span class="text-xs" style={{ color: "#64748B" }}>
-                    Hasta: <span class="font-mono" style={{ color: "#0369A1" }}>{caiRangoFin}</span>
+                    Hasta: <span class="font-mono" style={{ color: "#0369A1" }}>{cai.rangoFin}</span>
                   </span>
                 </div>
                 <p class="text-xs mt-1" style={{ color: "#64748B" }}>
                   Límite de emisión:{" "}
                   <span class="font-semibold" style={{ color: "#0369A1" }}>
-                    {caiFecha}
+                    {cai.fechaLimite}
                   </span>{" "}
                   · Sucursal:{" "}
                   <span class="font-semibold" style={{ color: "#0369A1" }}>
-                    {sucursal.value}
+                    {sucursalActiva?.nombre ?? 'Sin sucursal'}
                   </span>
                 </p>
               </div>

@@ -74,6 +74,7 @@ export const createSucursalSchema = z.object({
 export type CreateSucursal = z.infer<typeof createSucursalSchema>;
 
 export const updateSucursalSchema = createSucursalSchema.partial();
+export type UpdateSucursal = z.infer<typeof updateSucursalSchema>;
 
 // ── Clientes ─────────────────────────────────────────────────────────────────
 export const clientSchema = z.object({
@@ -190,6 +191,7 @@ export const createProductSchema = z.object({
 export type CreateProduct = z.infer<typeof createProductSchema>;
 
 export const updateProductSchema = createProductSchema.partial();
+export type UpdateProduct = z.infer<typeof updateProductSchema>;
 
 // ── Inventario ────────────────────────────────────────────────────────────────
 export const inventarioSchema = z.object({
