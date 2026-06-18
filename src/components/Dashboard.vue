@@ -3,7 +3,7 @@ import { defineComponent, ref, onMounted } from 'vue';
 import { TrendingUp, Package, Users, FileText, ShoppingCart, ArrowRight, ArrowUpRight, Flame } from "lucide-vue-next";
 import { InteractiveBarChart } from "./InteractiveCharts";
 import { getResumenGeneral } from '../api';
-import type { Page } from '../types';
+import { getToken } from '../lib/token';
 
 export default defineComponent({
   name: 'Dashboard',
@@ -69,6 +69,7 @@ export default defineComponent({
     const error = ref<string | null>(null);
 
     onMounted(async () => {
+      console.log('Token:', getToken());
       cargando.value = true;
       try {
         const res = await getResumenGeneral(desde, hasta);
@@ -268,11 +269,12 @@ export default defineComponent({
                 ) : topProductos.value.length === 0 ? (
                   <p class="text-xs" style={{ color: "#94A3B8" }}>Sin datos en el período</p>
                 ) : (
-                  topProductos.value.map((p, i) => {
+                  topProductos.value.slice(0, 5).map((p, i) => {
                     const rankColors = ["#F87171", "#FB923C", "#38BDF8", "#94A3B8", "#818CF8"];
+                    const color = rankColors[i % rankColors.length];
                     return (
                       <div key={i} class="flex items-center gap-3">
-                        <div class="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-extrabold flex-shrink-0" style={{ background: `${rankColors[i]}20`, color: rankColors[i] }}>
+                        <div class="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-extrabold flex-shrink-0" style={{ background: `${color}20`, color }}>
                           {i + 1}
                         </div>
                         <div class="flex-1 min-w-0">
