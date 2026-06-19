@@ -15,3 +15,16 @@ export function getInventario(
     signal,
   });
 }
+
+/** PATCH /inventario/stock — crea o actualiza el stock exacto. */
+export function setInventario(
+  sucursal: string,
+  producto: string,
+  cantidad: number,
+): Promise<Inventario> {
+  return request('/inventario/stock', inventarioSchema, {
+    method: 'PATCH',
+    body: { sucursal, producto, cantidad },
+    auth: true,
+  });
+}
