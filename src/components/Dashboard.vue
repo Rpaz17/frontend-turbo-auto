@@ -1,10 +1,9 @@
 <script lang="tsx">
 import { defineComponent, ref, onMounted } from 'vue';
-import { TrendingUp, Package, Users, FileText, ShoppingCart, ArrowRight, ArrowUpRight, Flame } from "lucide-vue-next";
+import { TrendingUp, Package, Users, FileText, ShoppingCart, ArrowRight, ArrowUpRight, Flame, RefreshCw } from "lucide-vue-next";
 import { InteractiveBarChart } from "./InteractiveCharts";
 import { getResumenGeneral } from '../api';
 import { formatMoney } from '../store';
-import { getToken } from '../lib/token';
 
 interface FacturaReporte {
   fecha_emision: string;
@@ -62,10 +61,15 @@ export default defineComponent({
     };
 
     const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-    const now = new Date();
-    const desdeDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-    const desde = toYmd(desdeDate);
-    const hasta = toYmd(now);
+
+    const getDashboardRange = () => {
+      const now = new Date();
+      const desdeDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+      return {
+        desde: toYmd(desdeDate),
+        hasta: toYmd(now),
+      };
+    };
 
     const numberFromMoney = (value: unknown): number => {
       if (typeof value === 'number') return value;
@@ -112,10 +116,12 @@ export default defineComponent({
     const topServicios = ref<Array<{ descripcion: string; cantidad: number; monto: number }>>([]);
     const cargando = ref(false);
     const error = ref<string | null>(null);
+    const ultimaActualizacion = ref<string | null>(null);
 
-    onMounted(async () => {
-      console.log('Token:', getToken());
+    const cargarDashboard = async () => {
+      const { desde, hasta } = getDashboardRange();
       cargando.value = true;
+      error.value = null;
       try {
         const res = await getResumenGeneral(desde, hasta) as ReporteResumen;
         topProductos.value = res.productos_mas_vendidos ?? [];
@@ -127,13 +133,19 @@ export default defineComponent({
           cantidad: n(servicio.cantidad),
           monto: n(servicio.monto),
         }));
+        ultimaActualizacion.value = new Date().toLocaleTimeString('es-HN', {
+          hour: '2-digit',
+          minute: '2-digit',
+        });
       } catch (e) {
         console.error('Error cargando datos del dashboard:', e);
         error.value = 'No se pudieron cargar los datos del dashboard';
       } finally {
         cargando.value = false;
       }
-    });
+    };
+
+    onMounted(cargarDashboard);
 
     const accesosRapidos = [
       { label: "Nueva venta", icon: ShoppingCart, page: "ventas", gradient: "linear-gradient(135deg, #F87171, #FB923C)", shadow: "rgba(248,113,113,0.30)" },
@@ -192,6 +204,25 @@ export default defineComponent({
 
       return (
         <div class="space-y-6">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <h2 class="text-lg font-extrabold" style={{ color: "#0F172A" }}>Panel general</h2>
+              <p class="text-xs mt-0.5" style={{ color: "#94A3B8" }}>
+                {ultimaActualizacion.value ? `Actualizado ${ultimaActualizacion.value}` : "Datos de los últimos 6 meses"}
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={cargando.value}
+              onClick={cargarDashboard}
+              class="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all disabled:opacity-60"
+              style={{ background: "#F8FAFC", color: "#0F172A", border: "1px solid #E2E8F0" }}
+            >
+              <RefreshCw size={14} class={cargando.value ? "animate-spin" : ""} />
+              Actualizar
+            </button>
+          </div>
+
           {cargando.value && (
             <div class="text-center py-4 text-sm" style={{ color: "#94A3B8" }}>
               Cargando datos...
@@ -258,7 +289,7 @@ export default defineComponent({
                   Ver reportes <ArrowRight size={12} />
                 </button>
               </div>
-              <div class="space-y-2.5">
+              <div class="space-y-2.5 max-h-72 overflow-y-auto pr-1">
                 {cargando.value ? (
                   <p class="text-xs" style={{ color: "#94A3B8" }}>Cargando...</p>
                 ) : topServicios.value.length === 0 ? (
@@ -312,7 +343,7 @@ export default defineComponent({
                   Ver reportes <ArrowRight size={12} />
                 </button>
               </div>
-              <div class="space-y-3">
+              <div class="space-y-3 max-h-72 overflow-y-auto pr-1">
                 {cargando.value ? (
                   <p class="text-xs" style={{ color: "#94A3B8" }}>Cargando...</p>
                 ) : topProductos.value.length === 0 ? (
@@ -348,7 +379,7 @@ export default defineComponent({
                   Ver reportes <ArrowRight size={12} />
                 </button>
               </div>
-              <div class="space-y-3">
+              <div class="space-y-3 max-h-72 overflow-y-auto pr-1">
                 {cargando.value ? (
                   <p class="text-xs" style={{ color: "#94A3B8" }}>Cargando...</p>
                 ) : clientesFrecuentes.value.length === 0 ? (
