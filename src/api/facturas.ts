@@ -48,4 +48,3 @@ export async function getFacturaById(id: string): Promise<Factura> {
 export function exportFactura(id: string): Promise<string> {
   return request(`/facturas/${id}/exportar`, z.string(), { auth: true });
 }
-
