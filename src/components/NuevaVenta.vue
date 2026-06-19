@@ -10,6 +10,7 @@ import { useClientes } from '../composables/useClientes';
 import { useSucursales } from '../composables/useSucursales';
 import type { Product, Client, Sucursal } from '../api/schemas';
 import { generateFactura, exportFactura, getUserIdFromToken } from '../api';
+import { getInventario } from '../api/inventario';
 
 interface LineaProducto {
   id: number;
@@ -21,6 +22,7 @@ interface LineaProducto {
   descuento: number;
   exento: boolean;
   exonerado: boolean;
+  stockDisponible?: number;
 }
 
 interface LineaServicio {
@@ -73,6 +75,29 @@ export default defineComponent({
     const servicios = ref<LineaServicio[]>([]);
     const vistaPrevia = ref(false);
     const tipoPago = ref<"contado" | "credito">("contado");
+    const popup = ref<{
+      open: boolean;
+      title: string;
+      message: string;
+      tone: "error" | "warning" | "success";
+    }>({
+      open: false,
+      title: "",
+      message: "",
+      tone: "error",
+    });
+
+    const mostrarPopup = (
+      title: string,
+      message: string,
+      tone: "error" | "warning" | "success" = "error",
+    ) => {
+      popup.value = { open: true, title, message, tone };
+    };
+
+    const cerrarPopup = () => {
+      popup.value = { ...popup.value, open: false };
+    };
 
     // Inputs for manually adding a service
     const descServicio = ref("");
@@ -87,7 +112,38 @@ export default defineComponent({
 
     const ISV15 = 0.15;
 
-    const agregarProducto = (p: Product) => {
+    const agregarProducto = async (p: Product) => {
+      if (!sucursalId.value) {
+        mostrarPopup(
+          "Selecciona una sucursal",
+          "Primero elige la sucursal de venta para validar existencias antes de agregar productos.",
+          "warning",
+        );
+        return;
+      }
+
+      let stockDisponible = 0;
+      try {
+        const inventario = await getInventario(sucursalId.value, p.id);
+        stockDisponible = inventario.cantidad;
+      } catch {
+        mostrarPopup(
+          "Producto sin stock",
+          `${p.nombre} no tiene inventario registrado en la sucursal seleccionada.`,
+          "warning",
+        );
+        return;
+      }
+
+      if (stockDisponible <= 0) {
+        mostrarPopup(
+          "Producto sin stock",
+          `${p.nombre} no tiene existencias disponibles en la sucursal seleccionada.`,
+          "warning",
+        );
+        return;
+      }
+
       lineas.value.push({
         id: lineaId++,
         nombre: p.nombre,
@@ -98,6 +154,7 @@ export default defineComponent({
         descuento: 0,
         exento: false,
         exonerado: false,
+        stockDisponible,
       });
       busqProd.value = "";
     };
@@ -140,15 +197,25 @@ export default defineComponent({
 
     const handleGenerarFactura = async () => {
       if (!sucursalId.value) {
-        alert("Por favor, seleccione una sucursal.");
+        mostrarPopup("Falta la sucursal", "Por favor, selecciona una sucursal para generar la factura.", "warning");
         return;
       }
       if (!clienteId.value) {
-        alert("Por favor, seleccione un cliente.");
+        mostrarPopup("Falta el cliente", "Por favor, selecciona un cliente para generar la factura.", "warning");
         return;
       }
       if (lineas.value.length === 0 && servicios.value.length === 0) {
-        alert("Por favor, agregue al menos un producto o servicio.");
+        mostrarPopup("Factura vacía", "Agrega al menos un producto o servicio antes de generar la factura.", "warning");
+        return;
+      }
+
+      const lineaSinStock = lineas.value.find((l) => l.stockDisponible !== undefined && l.cantidad > l.stockDisponible);
+      if (lineaSinStock) {
+        mostrarPopup(
+          "Stock insuficiente",
+          `${lineaSinStock.nombre} solo tiene ${lineaSinStock.stockDisponible} unidades disponibles en esta sucursal.`,
+          "warning",
+        );
         return;
       }
 
@@ -176,20 +243,30 @@ export default defineComponent({
 
         if (facturaId) {
           const html = await exportFactura(facturaId);
+          window.dispatchEvent(new CustomEvent("turbo:factura-creada"));
           const newWindow = window.open();
           if (newWindow) {
             newWindow.document.write(html);
             newWindow.document.close();
           } else {
-            alert("Factura generada con éxito, pero la ventana emergente fue bloqueada. Por favor, permita los pop-ups.");
+            mostrarPopup(
+              "Factura generada",
+              "La factura se generó correctamente, pero la ventana emergente fue bloqueada. Permite los pop-ups para verla.",
+              "success",
+            );
           }
           limpiarFormulario();
         } else {
-          alert("Error: No se recibió el ID de la factura generada.");
+          mostrarPopup("No se pudo abrir la factura", "El backend no devolvió el ID de la factura generada.");
         }
       } catch (err: any) {
         console.error("Error al generar factura:", err);
-        alert(`Ocurrió un error al generar la factura: ${err.message || err}`);
+        const backendMessage =
+          Array.isArray(err?.data?.message) ? err.data.message.join(", ") :
+          typeof err?.data?.message === "string" ? err.data.message :
+          typeof err?.message === "string" ? err.message :
+          "Ocurrió un error al generar la factura.";
+        mostrarPopup("No se pudo generar la factura", backendMessage);
       } finally {
         generando.value = false;
       }
@@ -242,8 +319,39 @@ export default defineComponent({
     );
 
     return () => {
+      const popupStyle = {
+        error: { bg: "#FEF2F2", color: "#DC2626", iconBg: "#FEE2E2", border: "#FECACA" },
+        warning: { bg: "#FFF7ED", color: "#C2410C", iconBg: "#FFEDD5", border: "#FDBA74" },
+        success: { bg: "#F0FDF4", color: "#16A34A", iconBg: "#DCFCE7", border: "#BBF7D0" },
+      }[popup.value.tone];
+
       return (
     <div class="space-y-5">
+      {popup.value.open && (
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(15,23,42,0.55)" }}>
+          <div class="w-full max-w-md rounded-2xl shadow-2xl overflow-hidden" style={{ background: "#fff", border: `1px solid ${popupStyle.border}` }}>
+            <div class="p-6">
+              <div class="flex items-start gap-4">
+                <div class="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: popupStyle.iconBg }}>
+                  <AlertCircle size={22} style={{ color: popupStyle.color }} />
+                </div>
+                <div class="min-w-0 flex-1">
+                  <h3 class="font-bold text-base mb-1" style={{ color: "#0F172A" }}>{popup.value.title}</h3>
+                  <p class="text-sm leading-relaxed" style={{ color: "#64748B" }}>{popup.value.message}</p>
+                </div>
+                <button onClick={cerrarPopup} class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#F8FAFC" }}>
+                  <X size={16} style={{ color: "#64748B" }} />
+                </button>
+              </div>
+            </div>
+            <div class="px-6 py-4 flex justify-end" style={{ background: popupStyle.bg, borderTop: `1px solid ${popupStyle.border}` }}>
+              <button onClick={cerrarPopup} class="px-4 py-2 rounded-xl text-sm font-bold" style={{ background: popupStyle.color, color: "#fff" }}>
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* === BLOQUE CAI FISCAL === */}
 
       <div class="grid lg:grid-cols-3 gap-6">
@@ -449,7 +557,7 @@ export default defineComponent({
                               {l.nombre}
                             </div>
                             <div class="text-xs" style={{ color: "#94A3B8" }}>
-                              {l.codigo}
+                              {l.codigo}{l.stockDisponible !== undefined ? ` · Stock: ${l.stockDisponible}` : ""}
                             </div>
                           </td>
                           <td class="py-2.5 pr-4">

@@ -178,6 +178,14 @@ export const productSchema = z.object({
   precio: z.string(),
   isv: z.string().nullable().optional(),
   activo: z.boolean(),
+  tipo_producto: z.object({
+    id: z.string(),
+    tipo: z.string(),
+  }).optional(),
+  proveedor: z.object({
+    id: z.string(),
+    nombre: z.string(),
+  }).nullable().optional(),
 });
 export type Product = z.infer<typeof productSchema>;
 
@@ -191,6 +199,8 @@ export type ProductImageUrl = z.infer<typeof productImageUrlSchema>;
 export const createProductSchema = z.object({
   tipo_producto_id: z.string().optional(),
   proveedor_id: z.string().optional(),
+  tipo: z.string().optional(),
+  proveedor: z.string().optional(),
   codigo: z.string(),
   nombre: z.string(),
   precio: z.string(),

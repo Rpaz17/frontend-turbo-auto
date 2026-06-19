@@ -16,8 +16,8 @@ export function getInventario(
   });
 }
 
-/** PATCH /inventario/stock — fija la cantidad exacta de stock. */
-export function setInventarioStock(
+/** PATCH /inventario/stock — crea o actualiza el stock exacto. */
+export function setInventario(
   sucursal: string,
   producto: string,
   cantidad: number,
