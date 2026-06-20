@@ -1,5 +1,7 @@
 <script lang="tsx">
 import { defineComponent, ref, computed } from 'vue';
+import { useRouter } from 'vue-router';
+import { hasToken } from '../api';
 import { Search, MessageCircle, Instagram, Facebook, Phone, Star, MapPin, ShoppingBag, Globe, Loader2 } from 'lucide-vue-next';
 import { useProductos, formatPrecio } from '../composables/useProductos';
 import { useSucursales } from '../composables/useSucursales';
@@ -32,9 +34,8 @@ function getCanalConfig(canal: any) {
 
 export default defineComponent({
   name: 'Storefront',
-  emits: ['irLogin'],
-  setup(_, { emit }) {
-    const onIrLogin = () => emit('irLogin');
+  setup() {
+    const router = useRouter();
 
     // Catálogo desde la API (GET /products).
     const { productos, loading, error } = useProductos();
@@ -76,7 +77,6 @@ export default defineComponent({
           <ProductDetail 
             product={detalle} 
             onVolver={cerrarDetalle} 
-            onIrLogin={onIrLogin} 
           />
         );
       }
@@ -104,7 +104,7 @@ export default defineComponent({
                   ); 
                 })}
               </div>
-              <button onClick={onIrLogin} class="text-xs px-3 py-1.5 rounded-lg font-semibold" style={{ background: 'rgba(255,255,255,0.1)', color: '#E2E8F0' }}>
+              <button onClick={() => router.push(hasToken() ? '/panel' : '/login')} class="text-xs px-3 py-1.5 rounded-lg font-semibold" style={{ background: 'rgba(255,255,255,0.1)', color: '#E2E8F0' }}>
                 Admin →
               </button>
             </div>

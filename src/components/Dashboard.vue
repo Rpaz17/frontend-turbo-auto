@@ -1,5 +1,6 @@
 <script lang="tsx">
 import { defineComponent, ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { TrendingUp, Package, Users, FileText, ShoppingCart, ArrowRight, ArrowUpRight, Flame, RefreshCw } from "lucide-vue-next";
 import { InteractiveBarChart } from "./InteractiveCharts";
 import { getResumenGeneral } from '../api';
@@ -49,9 +50,8 @@ type ProductoMasVendido = ReporteResumen['productos_mas_vendidos'][number];
 
 export default defineComponent({
   name: 'Dashboard',
-  emits: ["navigate"],
-  setup(props, { emit }) {
-    const onNavigate = (page: string) => emit('navigate', page);
+  setup() {
+    const router = useRouter();
 
     const toYmd = (value: Date) => {
       const year = value.getFullYear();
@@ -285,7 +285,7 @@ export default defineComponent({
                   <Flame size={14} style={{ color: "#FB923C" }} />
                   <h3 class="font-bold" style={{ color: "#0F172A" }}>Servicios más solicitados</h3>
                 </div>
-                <button onClick={() => onNavigate("reportes")} class="text-xs font-semibold flex items-center gap-1" style={{ color: "#FB923C" }}>
+                <button onClick={() => router.push("/reportes")} class="text-xs font-semibold flex items-center gap-1" style={{ color: "#FB923C" }}>
                   Ver reportes <ArrowRight size={12} />
                 </button>
               </div>
@@ -321,7 +321,7 @@ export default defineComponent({
                 {accesosRapidos.map((a) => {
                   const Icon = a.icon;
                   return (
-                    <button key={a.label} onClick={() => onNavigate(a.page)} class="flex flex-col items-center gap-2.5 p-4 rounded-xl transition-all hover:scale-105 text-center" style={{ background: a.gradient, boxShadow: `0 4px 14px ${a.shadow}` }}>
+                    <button key={a.label} onClick={() => router.push(`/${a.page}`)} class="flex flex-col items-center gap-2.5 p-4 rounded-xl transition-all hover:scale-105 text-center" style={{ background: a.gradient, boxShadow: `0 4px 14px ${a.shadow}` }}>
                       <div class="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(255,255,255,0.22)" }}>
                         <Icon size={18} style={{ color: "#fff" }} />
                       </div>
@@ -339,7 +339,7 @@ export default defineComponent({
                   <Flame size={15} style={{ color: "#F87171" }} />
                   <h3 class="font-bold" style={{ color: "#0F172A" }}>Más vendidos</h3>
                 </div>
-                <button onClick={() => onNavigate("reportes")} class="text-xs font-semibold flex items-center gap-1" style={{ color: "#38BDF8" }}>
+                <button onClick={() => router.push("/reportes")} class="text-xs font-semibold flex items-center gap-1" style={{ color: "#38BDF8" }}>
                   Ver reportes <ArrowRight size={12} />
                 </button>
               </div>
@@ -375,7 +375,7 @@ export default defineComponent({
                   <Users size={15} style={{ color: "#818CF8" }} />
                   <h3 class="font-bold" style={{ color: "#0F172A" }}>Clientes frecuentes</h3>
                 </div>
-                <button onClick={() => onNavigate("reportes")} class="text-xs font-semibold flex items-center gap-1" style={{ color: "#818CF8" }}>
+                <button onClick={() => router.push("/reportes")} class="text-xs font-semibold flex items-center gap-1" style={{ color: "#818CF8" }}>
                   Ver reportes <ArrowRight size={12} />
                 </button>
               </div>

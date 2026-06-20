@@ -1,5 +1,6 @@
 <script lang="tsx">
 import { defineComponent, ref } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import { Lock, User, AlertCircle, ArrowLeft } from "lucide-vue-next";
 import { useAuth } from "../composables/useAuth";
 import logoUrl from '../assets/turbo-auto-logo.png';
@@ -8,10 +9,9 @@ import logoUrl from '../assets/turbo-auto-logo.png';
 export default defineComponent({
   name: 'Login',
 
-  emits: ["login", "volver"],
-  setup(props, { emit }) {
-  const onLogin = () => emit('login');
-  const onVolver = () => emit('volver');
+  setup() {
+  const router = useRouter();
+  const route = useRoute();
 
   // La API de auth usa usuario + contraseña (no correo).
   const { login, loading, error } = useAuth();
@@ -23,7 +23,10 @@ export default defineComponent({
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
     const ok = await login({ username: username.value, password: password.value });
-    if (ok) onLogin();
+    if (ok) {
+      const redirect = (route.query.redirect as string) || '/panel';
+      router.push(redirect);
+    }
   };
 
     return () => {
@@ -52,7 +55,7 @@ export default defineComponent({
             </div>
 
             <button
-              onClick={onVolver}
+              onClick={() => router.push('/')}
               class="flex items-center gap-2 mb-6 text-sm font-semibold transition-all hover:gap-3"
               style={{ color: "#38BDF8" }}
             >

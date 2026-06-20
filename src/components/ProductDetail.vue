@@ -1,5 +1,7 @@
 <script lang="tsx">
 import { defineComponent, onMounted, computed, type PropType } from 'vue';
+import { useRouter } from 'vue-router';
+import { hasToken } from '../api';
 import { MessageCircle, Instagram, Facebook, Phone, Star, MapPin, ArrowLeft, ShoppingBag, Globe, Loader2, AlertCircle } from 'lucide-vue-next';
 import { type Product } from '../api/schemas';
 import { formatPrecio } from '../composables/useProductos';
@@ -43,8 +45,9 @@ export default defineComponent({
       required: true,
     },
   },
-  emits: ['volver', 'irLogin'],
+  emits: ['volver'],
   setup(props, { emit }) {
+    const router = useRouter();
     const inv = useInventarioProducto();
     const reviews = useResenas();
     const { canales, load: loadCanales } = useCanales();
@@ -56,7 +59,6 @@ export default defineComponent({
     });
 
     const onVolver = () => emit('volver');
-    const onIrLogin = () => emit('irLogin');
 
     return () => {
       const detalle = props.product;
@@ -73,7 +75,7 @@ export default defineComponent({
                   <div class="text-xs font-semibold" style={{ color: '#38BDF8' }}>Repuestos automotrices</div>
                 </div>
               </div>
-              <button onClick={onIrLogin} class="text-xs px-3 py-1.5 rounded-lg font-semibold" style={{ background: 'rgba(255,255,255,0.1)', color: '#E2E8F0' }}>
+              <button onClick={() => router.push(hasToken() ? '/panel' : '/login')} class="text-xs px-3 py-1.5 rounded-lg font-semibold" style={{ background: 'rgba(255,255,255,0.1)', color: '#E2E8F0' }}>
                 Admin →
               </button>
             </div>

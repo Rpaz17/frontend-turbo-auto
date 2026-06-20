@@ -1,5 +1,3 @@
-export type Page = "panel" | "inventario" | "ventas" | "clientes" | "reportes" | "sucursales" | "configuracion" | "storefront";
-
 export interface SucursalBase {
   id: string;
   nombre: string;

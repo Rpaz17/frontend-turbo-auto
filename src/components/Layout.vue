@@ -1,71 +1,65 @@
 <script lang="tsx">
-import { defineComponent, ref, type PropType } from 'vue';
+import { defineComponent, ref, computed } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import {
   LayoutDashboard, Package, ShoppingCart, Users, BarChart3,
   Building2, Settings, Store, LogOut, Bell,
   Menu, X, AlertTriangle, Trash2,
 } from "lucide-vue-next";
+import { logout } from '../api';
 import logoUrl from '../assets/turbo-auto-logo.png';
 
-type Page = "panel" | "inventario" | "ventas" | "clientes" | "reportes" | "sucursales" | "configuracion" | "storefront";
-
-const navItems: {
-  id: Page;
-  label: string;
-  icon: any;
-  accentColor: string;
-  dotColor: string;
-}[] = [
-  { id: "panel", label: "Panel general", icon: LayoutDashboard, accentColor: "#38BDF8", dotColor: "#38BDF8" },
-  { id: "inventario", label: "Inventario", icon: Package, accentColor: "#38BDF8", dotColor: "#38BDF8" },
-  { id: "ventas", label: "Facturación", icon: ShoppingCart, accentColor: "#F87171", dotColor: "#F87171" },
-  { id: "clientes", label: "Clientes", icon: Users, accentColor: "#FB923C", dotColor: "#FB923C" },
-  { id: "reportes", label: "Reportes", icon: BarChart3, accentColor: "#FDBA74", dotColor: "#FDBA74" },
-  { id: "sucursales", label: "Sucursales", icon: Building2, accentColor: "#818CF8", dotColor: "#818CF8" },
-  { id: "storefront", label: "Tienda pública", icon: Store, accentColor: "#34D399", dotColor: "#34D399" },
-  { id: "configuracion", label: "Configuración", icon: Settings, accentColor: "#94A3B8", dotColor: "#94A3B8" },
+const navItems = [
+  { to: "/panel",         label: "Panel general",    icon: LayoutDashboard, accentColor: "#38BDF8", dotColor: "#38BDF8" },
+  { to: "/inventario",    label: "Inventario",       icon: Package,         accentColor: "#38BDF8", dotColor: "#38BDF8" },
+  { to: "/ventas",        label: "Facturación",      icon: ShoppingCart,    accentColor: "#F87171", dotColor: "#F87171" },
+  { to: "/clientes",      label: "Clientes",         icon: Users,           accentColor: "#FB923C", dotColor: "#FB923C" },
+  { to: "/reportes",      label: "Reportes",         icon: BarChart3,       accentColor: "#FDBA74", dotColor: "#FDBA74" },
+  { to: "/sucursales",    label: "Sucursales",       icon: Building2,       accentColor: "#818CF8", dotColor: "#818CF8" },
+  { to: "/",              label: "Tienda pública",   icon: Store,           accentColor: "#34D399", dotColor: "#34D399" },
+  { to: "/configuracion", label: "Configuración",    icon: Settings,        accentColor: "#94A3B8", dotColor: "#94A3B8" },
 ];
-
 
 export default defineComponent({
   name: 'Layout',
-  props: { currentPage: { type: String, required: true } },
-  emits: ["navigate", "logout"],
-  setup(props, { emit, slots }) {
-  const onNavigate = (page: Page) => emit('navigate', page);
-  const onLogout = () => emit('logout');
+  setup() {
+    const router = useRouter();
+    const route = useRoute();
 
-  const sidebarOpen = ref(false);
-  const setSidebarOpen = (next: any) => { sidebarOpen.value = typeof next === 'function' ? next(sidebarOpen.value) : next; };
-  const notifOpen = ref(false);
-  const setNotifOpen = (next: any) => { notifOpen.value = typeof next === 'function' ? next(notifOpen.value) : next; };
-  const alerts = ref([
-    { id: 1, text: "Filtro de aceite 5W-30 — stock crítico (Sucursal Central)", type: "danger" },
-    { id: 2, text: "Pastillas de freno Bosch — advertencia de nivel bajo", type: "warning" },
-    { id: 3, text: "Bujías NGK — sobrestock detectado (Sucursal Norte)", type: "info" },
-  ]);
-  const setAlerts = (next: any) => { alerts.value = typeof next === 'function' ? next(alerts.value) : next; };
+    const sidebarOpen = ref(false);
+    const setSidebarOpen = (next: any) => { sidebarOpen.value = typeof next === 'function' ? next(sidebarOpen.value) : next; };
+    const notifOpen = ref(false);
+    const setNotifOpen = (next: any) => { notifOpen.value = typeof next === 'function' ? next(notifOpen.value) : next; };
+    const alerts = ref([
+      { id: 1, text: "Filtro de aceite 5W-30 — stock crítico (Sucursal Central)", type: "danger" },
+      { id: 2, text: "Pastillas de freno Bosch — advertencia de nivel bajo", type: "warning" },
+      { id: 3, text: "Bujías NGK — sobrestock detectado (Sucursal Norte)", type: "info" },
+    ]);
+    const setAlerts = (next: any) => { alerts.value = typeof next === 'function' ? next(alerts.value) : next; };
 
-  const eliminarAlerta = (id: number) => {
-    if (confirm("¿Estás seguro de eliminar esta alerta?")) {
-      setAlerts((prev) => prev.filter((a) => a.id !== id));
-    }
-  };
+    const eliminarAlerta = (id: number) => {
+      if (confirm("¿Estás seguro de eliminar esta alerta?")) {
+        setAlerts((prev: typeof alerts.value) => prev.filter((a) => a.id !== id));
+      }
+    };
 
-  const getCurrentItem = () => navItems.find((n) => n.id === props.currentPage);
-  const HeaderIcon = () => {
-    return (
-      <div class="w-9 h-9 rounded-xl flex items-center justify-center overflow-hidden" style={{ background: '#0F172A' }}>
-        <img src={logoUrl} alt="Turbo Auto F&M 504" class="w-8 h-8 object-contain" />
-      </div>
-    );
-  };
+    const currentItem = computed(() => navItems.find((n) => n.to === route.path));
+    const HeaderIcon = () => {
+      return (
+        <div class="w-9 h-9 rounded-xl flex items-center justify-center overflow-hidden" style={{ background: '#0F172A' }}>
+          <img src={logoUrl} alt="Turbo Auto F&M 504" class="w-8 h-8 object-contain" />
+        </div>
+      );
+    };
 
+    const handleLogout = () => {
+      logout();
+      router.push('/');
+    };
 
     return () => {
       return (
     <div class="flex h-screen overflow-hidden" style={{ background: "#F8FAFC" }}>
-      {/* Mobile overlay */}
       {sidebarOpen.value && (
         <div
           class="lg:hidden fixed inset-0 z-30 bg-black/60"
@@ -73,14 +67,12 @@ export default defineComponent({
         />
       )}
 
-      {/* Sidebar */}
       <aside
         class={`fixed lg:static inset-y-0 left-0 z-40 w-64 flex flex-col transition-transform duration-300 ${
           sidebarOpen.value ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
         style={{ background: "#0F172A" }}
       >
-        {/* Logo */}
         <div
           class="flex items-center justify-between px-5 py-5"
           style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}
@@ -107,7 +99,6 @@ export default defineComponent({
           </button>
         </div>
 
-        {/* Nav */}
         <nav class="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
           <p
             class="text-xs font-bold px-3 mb-3 uppercase tracking-widest"
@@ -117,21 +108,18 @@ export default defineComponent({
           </p>
           {navItems.map((item) => {
             const Icon = item.icon;
-            const active = props.currentPage === item.id;
+            const active = route.path === item.to;
             return (
-              <button
-                key={item.id}
-                onClick={() => {
-                  onNavigate(item.id);
-                  setSidebarOpen(false);
-                }}
-                class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left relative overflow-hidden group"
+              <router-link
+                key={item.to}
+                to={item.to}
+                onClick={() => setSidebarOpen(false)}
+                class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left relative overflow-hidden group no-underline"
                 style={{
                   background: active ? `${item.accentColor}15` : "transparent",
                   color: active ? item.accentColor : "#64748B",
                 }}
               >
-                {/* active left accent bar */}
                 {active && (
                   <div
                     class="absolute left-0 top-2 bottom-2 w-0.5 rounded-r-full"
@@ -139,7 +127,6 @@ export default defineComponent({
                   />
                 )}
 
-                {/* color dot */}
                 <div
                   class="w-1.5 h-1.5 rounded-full flex-shrink-0 transition-all"
                   style={{
@@ -159,7 +146,7 @@ export default defineComponent({
 
                 <span class={active ? "font-semibold" : ""}>{item.label}</span>
 
-                {item.id === "inventario" && (
+                {item.to === "/inventario" && (
                   <span
                     class="ml-auto text-xs px-1.5 py-0.5 rounded-md font-bold"
                     style={{ background: "#F87171", color: "#fff" }}
@@ -167,12 +154,11 @@ export default defineComponent({
                     3
                   </span>
                 )}
-              </button>
+              </router-link>
             );
           })}
         </nav>
 
-        {/* User */}
         <div
           class="px-4 py-4"
           style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}
@@ -195,7 +181,7 @@ export default defineComponent({
             </div>
           </div>
           <button
-            onClick={onLogout}
+            onClick={handleLogout}
             class="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-all font-semibold"
             style={{ color: "#F87171", background: "rgba(248,113,113,0.09)" }}
           >
@@ -205,9 +191,7 @@ export default defineComponent({
         </div>
       </aside>
 
-      {/* Main content */}
       <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Top header */}
         <header
           class="flex-shrink-0 flex items-center justify-between px-6 py-3.5"
           style={{
@@ -227,7 +211,7 @@ export default defineComponent({
               {HeaderIcon()}
               <div>
                 <h1 class="font-bold text-base leading-none" style={{ color: "#0F172A" }}>
-                  {getCurrentItem()?.label ?? "Panel general"}
+                  {currentItem.value?.label ?? "Panel general"}
                 </h1>
                 <p class="text-xs mt-0.5" style={{ color: "#94A3B8" }}>
                   Turbo Auto F&amp;M 504
@@ -237,7 +221,6 @@ export default defineComponent({
           </div>
 
           <div class="flex items-center gap-2.5">
-            {/* Notifications */}
             <div class="relative">
               <button
                 onClick={() => setNotifOpen(!notifOpen.value)}
@@ -309,17 +292,14 @@ export default defineComponent({
                 </div>
               )}
             </div>
-
           </div>
         </header>
 
-        {/* Page content */}
-        <main class="flex-1 overflow-y-auto p-6">{slots.default?.()}</main>
+        <main class="flex-1 overflow-y-auto p-6"><router-view /></main>
       </div>
     </div>
   );
     };
   },
 });
-
 </script>
