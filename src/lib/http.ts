@@ -4,7 +4,7 @@ import { getToken, clearToken } from './token';
 
 // Base URL de la API. Se configura con VITE_API_URL (.env). Si no se define,
 // cae a localhost para desarrollo.
-const BASE_URL = (import.meta.env.VITE_API_URL ?? 'http://localhost:3000').replace(/\/$/, '');
+export const BASE_URL = (import.meta.env.VITE_API_URL ?? 'http://localhost:3000').replace(/\/$/, '');
 
 export class ApiError extends Error {
   status: number;

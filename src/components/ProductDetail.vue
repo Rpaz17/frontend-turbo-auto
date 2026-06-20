@@ -89,10 +89,7 @@ export default defineComponent({
             <div class="grid lg:grid-cols-2 gap-8">
               <div>
                 <div class="rounded-2xl overflow-hidden mb-4 aspect-video flex items-center justify-center" style={{ background: '#F1F5F9' }}>
-                  <div class="flex flex-col items-center gap-2" style={{ color: '#CBD5E1' }}>
-                    <ShoppingBag size={40} />
-                    <span class="text-xs font-semibold">{detalle.codigo}</span>
-                  </div>
+                  {detalle.imagen_url ? <img src={detalle.imagen_url} alt={detalle.nombre} class="w-full h-full object-cover" /> : <div class="flex flex-col items-center gap-2" style={{ color: '#CBD5E1' }}><ShoppingBag size={40} /><span class="text-xs font-semibold">{detalle.codigo}</span></div>}
                 </div>
               </div>
               

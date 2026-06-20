@@ -11,6 +11,7 @@ import { useSucursales } from '../composables/useSucursales';
 import type { Product, Client, Sucursal } from '../api/schemas';
 import { generateFactura, exportFactura, getUserIdFromToken } from '../api';
 import { getInventario } from '../api/inventario';
+import { broadcastFacturaCreada } from '../composables/useStockNotifications';
 
 interface LineaProducto {
   id: number;
@@ -243,7 +244,7 @@ export default defineComponent({
 
         if (facturaId) {
           const html = await exportFactura(facturaId);
-          window.dispatchEvent(new CustomEvent("turbo:factura-creada"));
+          broadcastFacturaCreada();
           const newWindow = window.open();
           if (newWindow) {
             newWindow.document.write(html);

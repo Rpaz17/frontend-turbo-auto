@@ -2,7 +2,7 @@
 import { defineComponent, onBeforeUnmount, onMounted, ref } from 'vue';
 import { Search, Plus, Edit2, Trash2, X, Package, AlertTriangle, CheckCircle, ChevronDown, RefreshCw } from 'lucide-vue-next';
 import { store, categoriasProducto, getEstadoProducto, totalStock, parseMoney, formatMoney, type Producto } from '../store';
-import { createProduct, deleteProduct, getProducts, updateProduct, uploadProductImage } from '../api/products';
+import { createProduct, deleteProduct, getProductImageUrl, getProducts, updateProduct, uploadProductImage } from '../api/products';
 import { getSucursales } from '../api/sucursales';
 import { getInventario, setInventario } from '../api/inventario';
 import type { Product as ApiProduct, Sucursal } from '../api/schemas';
@@ -25,18 +25,21 @@ interface ProductoForm {
   proveedor: string;
   descripcion: string;
   imagen: File | null;
+  imagenPreviewUrl: string;
 }
 
 interface ProductoInventario extends Producto {
   apiId: string;
   codigo: string;
+  imagenId?: string | null;
+  imagenUrl?: string;
   isv?: string | null;
 }
 
 function formVacio(): ProductoForm {
   const stockPorSucursal: Record<string, string> = {};
   store.sucursales.forEach((s) => { stockPorSucursal[s.id] = ''; });
-  return { codigo: '', nombre: '', tipo: '', stockPorSucursal, precio: '', proveedor: '', descripcion: '', imagen: null };
+  return { codigo: '', nombre: '', tipo: '', stockPorSucursal, precio: '', proveedor: '', descripcion: '', imagen: null, imagenPreviewUrl: '' };
 }
 
 function sucursalLabel(nombre: string) {
@@ -79,6 +82,8 @@ function productoDesdeApi(producto: ApiProduct, sucursales: Sucursal[], stockPor
     stockPorSucursal,
     precio: formatPrecioInventario(producto.precio),
     proveedor: producto.proveedor?.nombre ?? 'Sin proveedor',
+    imagenId: producto.imagen_id,
+    imagenUrl: producto.imagen_url,
     isv: producto.isv,
   };
 }
@@ -138,6 +143,24 @@ export default defineComponent({
       window.removeEventListener('turbo:factura-creada', cargarInventario);
     });
 
+    const seleccionarImagen = (file: File | null) => {
+      form.value = {
+        ...form.value,
+        imagen: file,
+        imagenPreviewUrl: file ? URL.createObjectURL(file) : '',
+      };
+    };
+
+    const cargarPreviewProducto = async (producto: ProductoInventario) => {
+      if (!producto.imagenId) return;
+      try {
+        const image = await getProductImageUrl(producto.apiId);
+        form.value = { ...form.value, imagenPreviewUrl: image.url };
+      } catch {
+        form.value = { ...form.value, imagenPreviewUrl: '' };
+      }
+    };
+
     const abrirModalProducto = (producto?: ProductoInventario) => {
       if (producto) {
         const stockStr: Record<string, string> = {};
@@ -151,8 +174,10 @@ export default defineComponent({
           proveedor: producto.proveedor,
           descripcion: producto.descripcion ?? '',
           imagen: null,
+          imagenPreviewUrl: producto.imagenUrl ?? '',
         };
         productoEditando.value = producto.apiId;
+        cargarPreviewProducto(producto);
       } else {
         form.value = formVacio();
         productoEditando.value = null;
@@ -256,7 +281,7 @@ export default defineComponent({
             <div class="px-4 py-3 flex items-center justify-between" style={{ borderTop: '1px solid #F1F5F9' }}><span class="text-xs" style={{ color: '#94A3B8' }}>Mostrando {productosPagina.length} de {productosFiltrados.length} productos filtrados · {productosInventario.value.length} registrados</span><Pagination page={paginaProductos.value} totalPages={totalPagesProductos} onPage={(p) => (paginaProductos.value = p)} /></div>
           </div>
 
-          {modal.value && <div class="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(15,23,42,0.5)' }}><div class="w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden" style={{ background: '#fff' }}><div class="flex items-center justify-between px-6 py-5" style={{ borderBottom: '1px solid #F1F5F9' }}><h2 class="font-bold text-lg" style={{ color: '#0F172A' }}>{productoEditando.value ? 'Editar producto' : 'Agregar producto'}</h2><button onClick={() => { modal.value = false; form.value = formVacio(); productoEditando.value = null; }} class="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: '#F8FAFC' }}><X size={16} style={{ color: '#64748B' }} /></button></div><div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto"><div class="grid grid-cols-2 gap-4"><div class="col-span-2"><label class="block text-xs font-semibold mb-1.5" style={{ color: '#374151' }}>Nombre del producto</label><input value={form.value.nombre} onChange={(e) => (form.value = { ...form.value, nombre: (e.target as HTMLInputElement).value })} placeholder="Ej. Filtro de aceite 5W-30" class="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', color: '#111827' }} /></div><div><label class="block text-xs font-semibold mb-1.5" style={{ color: '#374151' }}>Tipo de pieza</label><select value={form.value.tipo} onChange={(e) => (form.value = { ...form.value, tipo: (e.target as HTMLSelectElement).value })} class="w-full px-3 py-2.5 rounded-xl text-sm outline-none appearance-none" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', color: '#374151' }}><option value="">Seleccionar tipo</option>{categoriasProducto.slice(1).map((t) => <option key={t}>{t}</option>)}</select></div><div><label class="block text-xs font-semibold mb-1.5" style={{ color: '#374151' }}>Proveedor</label><input value={form.value.proveedor} onChange={(e) => (form.value = { ...form.value, proveedor: (e.target as HTMLInputElement).value })} placeholder="Nombre del proveedor" class="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', color: '#111827' }} /></div><div><label class="block text-xs font-semibold mb-1.5" style={{ color: '#374151' }}>Precio unitario (L.)</label><input type="number" step="0.01" min="0" value={form.value.precio} onChange={(e) => (form.value = { ...form.value, precio: (e.target as HTMLInputElement).value })} placeholder="0.00" class="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', color: '#111827' }} /></div><div><label class="block text-xs font-semibold mb-1.5" style={{ color: '#374151' }}>Imagen del producto</label><input type="file" accept="image/*" onChange={(e) => (form.value = { ...form.value, imagen: (e.target as HTMLInputElement).files?.[0] ?? null })} class="w-full px-3 py-2 rounded-xl text-xs outline-none" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', color: '#111827' }} />{form.value.imagen && <div class="mt-1 text-xs truncate" style={{ color: '#64748B' }}>{form.value.imagen.name}</div>}</div><div class="col-span-2"><label class="block text-xs font-semibold mb-2" style={{ color: '#374151' }}>Stock por sucursal</label><div class="space-y-2 rounded-xl overflow-hidden" style={{ border: '1px solid #E2E8F0' }}>{sucursalesInventario.value.map((s, idx) => { const id = String(s.id); return <div key={id} class="flex items-center gap-3 px-4 py-3" style={{ background: idx % 2 === 0 ? '#F8FAFC' : '#fff', borderBottom: idx < sucursalesInventario.value.length - 1 ? '1px solid #F1F5F9' : 'none' }}><div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold" style={{ background: '#0F172A', color: '#fff' }}>{idx + 1}</div><span class="flex-1 text-sm font-semibold" style={{ color: '#374151' }}>{s.nombre}</span><div class="flex items-center gap-2"><span class="text-xs" style={{ color: '#94A3B8' }}>Cantidad:</span><input type="number" min="0" value={form.value.stockPorSucursal[id] ?? ''} onChange={(e) => (form.value = { ...form.value, stockPorSucursal: { ...form.value.stockPorSucursal, [id]: (e.target as HTMLInputElement).value } })} placeholder="0" class="w-20 px-2 py-1.5 rounded-lg text-sm outline-none text-center" style={{ background: '#fff', border: '1px solid #E2E8F0', color: '#111827' }} /></div></div>; })}</div></div></div></div><div class="flex gap-3 px-6 py-4" style={{ borderTop: '1px solid #F1F5F9' }}><button onClick={() => { modal.value = false; form.value = formVacio(); productoEditando.value = null; }} class="flex-1 py-2.5 rounded-xl text-sm font-semibold" style={{ background: '#F8FAFC', color: '#64748B', border: '1px solid #E2E8F0' }}>Cancelar</button><button onClick={guardarProducto} disabled={cargandoInventario.value} class="flex-1 py-2.5 rounded-xl text-sm font-semibold" style={{ background: '#0F172A', color: '#fff' }}>{productoEditando.value ? 'Actualizar producto' : 'Guardar producto'}</button></div></div></div>}
+          {modal.value && <div class="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(15,23,42,0.5)' }}><div class="w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden" style={{ background: '#fff' }}><div class="flex items-center justify-between px-6 py-5" style={{ borderBottom: '1px solid #F1F5F9' }}><h2 class="font-bold text-lg" style={{ color: '#0F172A' }}>{productoEditando.value ? 'Editar producto' : 'Agregar producto'}</h2><button onClick={() => { modal.value = false; form.value = formVacio(); productoEditando.value = null; }} class="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: '#F8FAFC' }}><X size={16} style={{ color: '#64748B' }} /></button></div><div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto"><div class="grid grid-cols-2 gap-4"><div class="col-span-2"><label class="block text-xs font-semibold mb-1.5" style={{ color: '#374151' }}>Nombre del producto</label><input value={form.value.nombre} onChange={(e) => (form.value = { ...form.value, nombre: (e.target as HTMLInputElement).value })} placeholder="Ej. Filtro de aceite 5W-30" class="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', color: '#111827' }} /></div><div><label class="block text-xs font-semibold mb-1.5" style={{ color: '#374151' }}>Tipo de pieza</label><select value={form.value.tipo} onChange={(e) => (form.value = { ...form.value, tipo: (e.target as HTMLSelectElement).value })} class="w-full px-3 py-2.5 rounded-xl text-sm outline-none appearance-none" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', color: '#374151' }}><option value="">Seleccionar tipo</option>{categoriasProducto.slice(1).map((t) => <option key={t}>{t}</option>)}</select></div><div><label class="block text-xs font-semibold mb-1.5" style={{ color: '#374151' }}>Proveedor</label><input value={form.value.proveedor} onChange={(e) => (form.value = { ...form.value, proveedor: (e.target as HTMLInputElement).value })} placeholder="Nombre del proveedor" class="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', color: '#111827' }} /></div><div><label class="block text-xs font-semibold mb-1.5" style={{ color: '#374151' }}>Precio unitario (L.)</label><input type="number" step="0.01" min="0" value={form.value.precio} onChange={(e) => (form.value = { ...form.value, precio: (e.target as HTMLInputElement).value })} placeholder="0.00" class="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', color: '#111827' }} /></div><div><label class="block text-xs font-semibold mb-1.5" style={{ color: '#374151' }}>Imagen del producto</label><label class="block rounded-xl overflow-hidden cursor-pointer" style={{ border: '1px solid #E2E8F0', background: '#F8FAFC' }}><div class="aspect-video flex items-center justify-center" style={{ background: '#F1F5F9' }}>{form.value.imagenPreviewUrl ? <img src={form.value.imagenPreviewUrl} alt="Previsualización del producto" class="w-full h-full object-cover" /> : <div class="flex flex-col items-center gap-1.5" style={{ color: '#94A3B8' }}><Package size={22} /><span class="text-xs font-semibold">Seleccionar imagen</span></div>}</div><input type="file" accept="image/*" onChange={(e) => seleccionarImagen((e.target as HTMLInputElement).files?.[0] ?? null)} class="hidden" /></label>{form.value.imagen && <div class="mt-1 text-xs truncate" style={{ color: '#64748B' }}>{form.value.imagen.name}</div>}</div><div class="col-span-2"><label class="block text-xs font-semibold mb-2" style={{ color: '#374151' }}>Stock por sucursal</label><div class="space-y-2 rounded-xl overflow-hidden" style={{ border: '1px solid #E2E8F0' }}>{sucursalesInventario.value.map((s, idx) => { const id = String(s.id); return <div key={id} class="flex items-center gap-3 px-4 py-3" style={{ background: idx % 2 === 0 ? '#F8FAFC' : '#fff', borderBottom: idx < sucursalesInventario.value.length - 1 ? '1px solid #F1F5F9' : 'none' }}><div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold" style={{ background: '#0F172A', color: '#fff' }}>{idx + 1}</div><span class="flex-1 text-sm font-semibold" style={{ color: '#374151' }}>{s.nombre}</span><div class="flex items-center gap-2"><span class="text-xs" style={{ color: '#94A3B8' }}>Cantidad:</span><input type="number" min="0" value={form.value.stockPorSucursal[id] ?? ''} onChange={(e) => (form.value = { ...form.value, stockPorSucursal: { ...form.value.stockPorSucursal, [id]: (e.target as HTMLInputElement).value } })} placeholder="0" class="w-20 px-2 py-1.5 rounded-lg text-sm outline-none text-center" style={{ background: '#fff', border: '1px solid #E2E8F0', color: '#111827' }} /></div></div>; })}</div></div></div></div><div class="flex gap-3 px-6 py-4" style={{ borderTop: '1px solid #F1F5F9' }}><button onClick={() => { modal.value = false; form.value = formVacio(); productoEditando.value = null; }} class="flex-1 py-2.5 rounded-xl text-sm font-semibold" style={{ background: '#F8FAFC', color: '#64748B', border: '1px solid #E2E8F0' }}>Cancelar</button><button onClick={guardarProducto} disabled={cargandoInventario.value} class="flex-1 py-2.5 rounded-xl text-sm font-semibold" style={{ background: '#0F172A', color: '#fff' }}>{productoEditando.value ? 'Actualizar producto' : 'Guardar producto'}</button></div></div></div>}
         </div>
       );
     };

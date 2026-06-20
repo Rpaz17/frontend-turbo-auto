@@ -1,5 +1,5 @@
 import { ref, onMounted } from 'vue';
-import { getProducts, getProduct } from '../api/products';
+import { getProducts, getProduct, getProductImageUrl } from '../api/products';
 import { ApiError } from '../lib/http';
 import type { Product } from '../api/schemas';
 
@@ -16,6 +16,17 @@ export function formatPrecio(precio: string): string {
   return `L. ${value.toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+async function withImageUrl(producto: Product): Promise<Product> {
+  if (!producto.imagen_id) return producto;
+
+  try {
+    const image = await getProductImageUrl(producto.id);
+    return { ...producto, imagen_url: image.url };
+  } catch {
+    return producto;
+  }
+}
+
 /**
  * Composable para el catálogo del storefront. Carga GET /products al montar
  * y expone estado de carga/error y una función para recargar.
@@ -29,7 +40,8 @@ export function useProductos() {
     loading.value = true;
     error.value = null;
     try {
-      productos.value = await getProducts();
+      const data = await getProducts();
+      productos.value = await Promise.all(data.map(withImageUrl));
     } catch (err) {
       error.value = messageFromError(err);
       productos.value = [];
@@ -53,7 +65,7 @@ export function useProducto(id: string) {
     loading.value = true;
     error.value = null;
     try {
-      producto.value = await getProduct(id);
+      producto.value = await withImageUrl(await getProduct(id));
     } catch (err) {
       error.value = messageFromError(err);
       producto.value = null;
