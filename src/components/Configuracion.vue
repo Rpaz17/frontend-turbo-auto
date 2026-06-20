@@ -1,7 +1,11 @@
 <script lang="tsx">
-import { defineComponent, ref } from 'vue';
+import { computed, defineComponent, onMounted, ref, watch } from 'vue';
 import { MessageCircle, Instagram, Facebook, Phone, Globe, Plus, Trash2, Eye, Save, ToggleLeft, ToggleRight, ShieldCheck, Building2, FileText, Lock, LockOpen, X, AlertCircle } from 'lucide-vue-next';
-import { store, addCanal, updateCanal, deleteCanal, setUmbrales, persistNow, type Canal } from '../store';
+import { store, setUmbrales, persistNow } from '../store';
+import { createRedSocial, deleteRedSocial, getRedesSociales, updateRedSocial } from '../api/ajustes';
+import { getCais, getCaiRangos } from '../api/cai';
+import { getSucursales } from '../api/sucursales';
+import type { Cai, CaiRango, RedSocial, Sucursal } from '../api/schemas';
 
 const iconosPorTipo: Record<string, { icon: any; color: string; bg: string }> = {
   WhatsApp: { icon: MessageCircle, color: '#25D366', bg: '#F0FDF4' },
@@ -11,7 +15,11 @@ const iconosPorTipo: Record<string, { icon: any; color: string; bg: string }> = 
   'Sitio web': { icon: Globe, color: '#7C3AED', bg: '#F5F3FF' },
 };
 const tiposCanal = ['WhatsApp', 'Instagram', 'Facebook', 'Teléfono', 'Sitio web'];
-function cfg(canal: Canal) { return iconosPorTipo[canal.tipo] ?? { icon: Globe, color: '#64748B', bg: '#F8FAFC' }; }
+function cfg(canal: { tipo: string }) { return iconosPorTipo[canal.tipo] ?? { icon: Globe, color: '#64748B', bg: '#F8FAFC' }; }
+function fechaFiscal(fecha?: string) {
+  if (!fecha) return 'N/D';
+  return new Date(fecha).toLocaleDateString('es-HN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+}
 function SeccionEncabezado({ icono, titulo, subtitulo, gradient }: { icono: any; titulo: string; subtitulo: string; gradient: string }) {
   return <div class="flex items-center gap-3 px-6 py-4 -mx-6 -mt-6 mb-6 rounded-t-2xl" style={{ background: gradient }}><div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(255,255,255,0.18)' }}>{icono}</div><div><div class="font-bold text-sm" style={{ color: '#fff' }}>{titulo}</div><div class="text-xs" style={{ color: 'rgba(255,255,255,0.70)' }}>{subtitulo}</div></div></div>;
 }
@@ -23,21 +31,143 @@ export default defineComponent({
     const nuevoId = ref('');
     const nuevaUrl = ref('');
     const guardado = ref(false);
+    const canales = ref<RedSocial[]>([]);
+    const cargandoCanales = ref(false);
+    const errorCanales = ref('');
     const caiDesbloqueado = ref(false);
     const modalContrasena = ref(false);
     const contrasena = ref('');
     const errorContrasena = ref(false);
     const umbralesForm = ref({ ...store.umbrales });
+    const sucursales = ref<Sucursal[]>([]);
+    const cais = ref<Cai[]>([]);
+    const rangos = ref<CaiRango[]>([]);
+    const sucursalSeleccionada = ref('');
+    const caiSeleccionado = ref('');
+    const cargandoCai = ref(false);
+    const errorCai = ref('');
+
+    const cargarConfiguracionFiscal = async () => {
+      cargandoCai.value = true;
+      errorCai.value = '';
+      try {
+        const [sucursalesApi, caisApi, rangosApi] = await Promise.all([
+          getSucursales(),
+          getCais(),
+          getCaiRangos(),
+        ]);
+        sucursales.value = sucursalesApi;
+        cais.value = caisApi;
+        rangos.value = rangosApi;
+        sucursalSeleccionada.value = sucursalSeleccionada.value || String(sucursalesApi[0]?.id ?? '');
+      } catch (error) {
+        console.error('Error al cargar configuración fiscal:', error);
+        errorCai.value = error instanceof Error ? error.message : 'No se pudo cargar la configuración fiscal.';
+      } finally {
+        cargandoCai.value = false;
+      }
+    };
+
+    const cargarCanales = async () => {
+      cargandoCanales.value = true;
+      errorCanales.value = '';
+      try {
+        canales.value = await getRedesSociales();
+      } catch (error) {
+        console.error('Error al cargar redes sociales:', error);
+        errorCanales.value = error instanceof Error ? error.message : 'No se pudieron cargar las redes sociales.';
+      } finally {
+        cargandoCanales.value = false;
+      }
+    };
+
+    onMounted(() => {
+      cargarConfiguracionFiscal();
+      cargarCanales();
+    });
+
+    const caisPorSucursal = computed(() =>
+      cais.value.filter((cai) => String(cai.sucursal_id) === String(sucursalSeleccionada.value)),
+    );
+
+    const caiActual = computed(() =>
+      caisPorSucursal.value.find((cai) => cai.id === caiSeleccionado.value) ?? caisPorSucursal.value[0],
+    );
+
+    const rangoActual = computed(() =>
+      rangos.value.find((rango) => rango.cai_id === caiActual.value?.id && rango.estado === 'ACTIVO') ??
+      rangos.value.find((rango) => rango.cai_id === caiActual.value?.id),
+    );
+
+    const numeroFacturaActual = computed(() => {
+      const rango = rangoActual.value;
+      if (!rango) return 'Sin rango activo';
+      const establecimiento = sucursales.value.find((sucursal) => String(sucursal.id) === String(sucursalSeleccionada.value))?.codigo_facturacion ?? '000';
+      const siguiente = Math.min(rango.correlativo_actual + 1, rango.rango_final);
+      return `${establecimiento}-${rango.punto_emision}-${rango.tipo_documento}-${String(siguiente).padStart(8, '0')}`;
+    });
+
+    watch(caisPorSucursal, (opciones) => {
+      if (!opciones.some((cai) => cai.id === caiSeleccionado.value)) {
+        caiSeleccionado.value = opciones[0]?.id || '';
+      }
+    }, { immediate: true });
 
     const verificarContrasena = () => {
       if (contrasena.value === 'cai2024') {
         caiDesbloqueado.value = true; modalContrasena.value = false; contrasena.value = ''; errorContrasena.value = false;
       } else errorContrasena.value = true;
     };
-    const agregarCanalNuevo = () => {
-      if (!nuevoId.value.trim()) return;
-      addCanal({ tipo: nuevoTipo.value, identificador: nuevoId.value, url: nuevaUrl.value || '#', activo: true });
-      nuevoId.value = ''; nuevaUrl.value = '';
+    const agregarCanalNuevo = async () => {
+      if (!nuevoId.value.trim() || !nuevaUrl.value.trim()) {
+        errorCanales.value = 'Ingresa el nombre/usuario y una URL válida para el canal.';
+        return;
+      }
+      cargandoCanales.value = true;
+      errorCanales.value = '';
+      try {
+        const canal = await createRedSocial({
+          nombre: nuevoId.value.trim(),
+          tipo: nuevoTipo.value,
+          url: nuevaUrl.value.trim(),
+          activo: true,
+        });
+        canales.value = [...canales.value, canal];
+        nuevoId.value = ''; nuevaUrl.value = '';
+      } catch (error) {
+        console.error('Error al agregar red social:', error);
+        errorCanales.value = error instanceof Error ? error.message : 'No se pudo agregar el canal.';
+      } finally {
+        cargandoCanales.value = false;
+      }
+    };
+
+    const alternarCanal = async (canal: RedSocial) => {
+      cargandoCanales.value = true;
+      errorCanales.value = '';
+      try {
+        const actualizado = await updateRedSocial(canal.id, { activo: !canal.activo });
+        canales.value = canales.value.map((item) => item.id === canal.id ? actualizado : item);
+      } catch (error) {
+        console.error('Error al actualizar red social:', error);
+        errorCanales.value = error instanceof Error ? error.message : 'No se pudo actualizar el canal.';
+      } finally {
+        cargandoCanales.value = false;
+      }
+    };
+
+    const eliminarCanal = async (canal: RedSocial) => {
+      cargandoCanales.value = true;
+      errorCanales.value = '';
+      try {
+        const actualizado = await deleteRedSocial(canal.id);
+        canales.value = canales.value.map((item) => item.id === canal.id ? actualizado : item);
+      } catch (error) {
+        console.error('Error al eliminar red social:', error);
+        errorCanales.value = error instanceof Error ? error.message : 'No se pudo eliminar el canal.';
+      } finally {
+        cargandoCanales.value = false;
+      }
     };
     const guardar = () => {
       setUmbrales({ ...umbralesForm.value });
@@ -47,7 +177,7 @@ export default defineComponent({
     };
 
     return () => {
-      const canalesActivos = store.canales.filter((c) => c.activo);
+      const canalesActivos = canales.value.filter((c) => c.activo);
       return (
         <div class="space-y-6">
           <div class="rounded-2xl p-6 shadow-sm" style={{ background: '#fff', border: '1px solid rgba(15,23,42,0.06)' }}>
@@ -60,22 +190,32 @@ export default defineComponent({
           <div class="rounded-2xl p-6 shadow-md" style={{ border: `2px solid ${caiDesbloqueado.value ? '#38BDF8' : '#1E3A5F'}` }}>
             <div class="flex items-center justify-between px-6 py-4 -mx-6 -mt-6 mb-6 rounded-t-2xl" style={{ background: 'linear-gradient(135deg, #0F172A 0%, #1E3A5F 100%)' }}><div class="flex items-center gap-3"><div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(255,255,255,0.18)' }}><ShieldCheck size={17} style={{ color: '#38BDF8' }} /></div><div><div class="font-bold text-sm" style={{ color: '#fff' }}>Configuración fiscal — CAI</div><div class="text-xs" style={{ color: 'rgba(255,255,255,0.70)' }}>Código de Autorización de Impresión · SAR Honduras</div></div></div>{caiDesbloqueado.value ? <button onClick={() => (caiDesbloqueado.value = false)} class="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all" style={{ background: 'rgba(248,113,113,0.18)', color: '#F87171', border: '1px solid rgba(248,113,113,0.35)' }}><LockOpen size={13} /> Bloquear CAI</button> : <button onClick={() => { contrasena.value = ''; errorContrasena.value = false; modalContrasena.value = true; }} class="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all" style={{ background: 'rgba(56,189,248,0.18)', color: '#38BDF8', border: '1px solid rgba(56,189,248,0.35)' }}><Lock size={13} /> Desbloquear para editar</button>}</div>
             <div class="flex items-center gap-3 px-4 py-3 rounded-xl mb-5" style={{ background: caiDesbloqueado.value ? '#F0FDF4' : '#F8FBFF', border: `1px solid ${caiDesbloqueado.value ? '#BBF7D0' : '#BFDBFE'}` }}>{caiDesbloqueado.value ? <LockOpen size={14} style={{ color: '#16A34A' }} /> : <Lock size={14} style={{ color: '#1D4ED8' }} />}<p class="text-xs" style={{ color: caiDesbloqueado.value ? '#16A34A' : '#1D4ED8' }}>{caiDesbloqueado.value ? 'Sección desbloqueada. Puedes editar los datos fiscales.' : 'Esta sección está protegida. Ingresa la contraseña de configuración fiscal para modificar los datos del CAI.'}</p></div>
+            {errorCai.value && <div class="rounded-xl px-4 py-3 mb-4 text-xs font-semibold" style={{ background: '#FEF2F2', border: '1px solid #FECACA', color: '#B91C1C' }}>{errorCai.value}</div>}
             <div class="grid grid-cols-2 lg:grid-cols-3 gap-4" style={{ opacity: caiDesbloqueado.value ? 1 : 0.55, transition: 'opacity 0.2s' }}>
-              <div class="col-span-2 lg:col-span-3"><label class="block text-xs font-bold mb-1.5" style={{ color: '#1E3A5F' }}>CAI por defecto</label><input defaultValue="2F4A8B-C91E3D-7A2150-B4F839-DE6C02-A5" disabled={!caiDesbloqueado.value} class="w-full px-3 py-2.5 rounded-xl text-sm outline-none font-mono" style={{ background: '#EFF6FF', border: '2px solid #38BDF8', color: '#1D4ED8', cursor: caiDesbloqueado.value ? 'text' : 'not-allowed' }} /></div>
-              {['001-001-01-00000001', '001-001-01-00000050', '001-001-01-00000038', '0501-2015-00248', 'Turbo Auto F&M 504 S. de R.L.', 'facturacion@turboauto.com'].map((value, idx) => <div key={value}><label class="block text-xs font-bold mb-1.5" style={{ color: '#1E3A5F' }}>{['Rango autorizado — inicio', 'Rango autorizado — fin', 'Número de factura actual', 'RTN del negocio', 'Razón social', 'Correo fiscal'][idx]}</label><input defaultValue={value} disabled={!caiDesbloqueado.value} class="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: '#F8FAFC', border: '1px solid #BFDBFE', color: '#111827', cursor: caiDesbloqueado.value ? 'text' : 'not-allowed' }} /></div>)}
+              <div><label class="block text-xs font-bold mb-1.5" style={{ color: '#1E3A5F' }}>Sucursal</label><select value={sucursalSeleccionada.value} disabled={!caiDesbloqueado.value || cargandoCai.value || sucursales.value.length === 0} onChange={(e) => (sucursalSeleccionada.value = (e.target as HTMLSelectElement).value)} class="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ background: '#EFF6FF', border: '2px solid #38BDF8', color: '#1D4ED8', cursor: caiDesbloqueado.value && sucursales.value.length > 0 ? 'pointer' : 'not-allowed' }}>{sucursales.value.map((sucursal) => <option key={String(sucursal.id)} value={String(sucursal.id)}>{sucursal.nombre}</option>)}{sucursales.value.length === 0 && <option value="">Sin sucursales</option>}</select></div>
+              <div class="col-span-2"><label class="block text-xs font-bold mb-1.5" style={{ color: '#1E3A5F' }}>CAI de la sucursal</label><select value={caiActual.value?.id ?? ''} disabled={!caiDesbloqueado.value || cargandoCai.value || caisPorSucursal.value.length === 0} onChange={(e) => (caiSeleccionado.value = (e.target as HTMLSelectElement).value)} class="w-full px-3 py-2.5 rounded-xl text-sm outline-none font-mono" style={{ background: '#EFF6FF', border: '2px solid #38BDF8', color: '#1D4ED8', cursor: caiDesbloqueado.value && caisPorSucursal.value.length > 0 ? 'pointer' : 'not-allowed' }}>{caisPorSucursal.value.map((cai) => <option key={cai.id} value={cai.id}>{cai.codigo_cai}</option>)}{caisPorSucursal.value.length === 0 && <option value="">Sin CAI para esta sucursal</option>}</select></div>
+              {[
+                { label: 'Fecha de emisión', value: fechaFiscal(caiActual.value?.fecha_emision) },
+                { label: 'Fecha de vencimiento', value: fechaFiscal(caiActual.value?.fecha_vencimiento) },
+                { label: 'Estado del rango', value: rangoActual.value?.estado ?? 'Sin rango' },
+                { label: 'Rango autorizado — inicio', value: rangoActual.value ? `${rangoActual.value.punto_emision}-${rangoActual.value.tipo_documento}-${String(rangoActual.value.rango_inicio).padStart(8, '0')}` : 'N/D' },
+                { label: 'Rango autorizado — fin', value: rangoActual.value ? `${rangoActual.value.punto_emision}-${rangoActual.value.tipo_documento}-${String(rangoActual.value.rango_final).padStart(8, '0')}` : 'N/D' },
+                { label: 'Número de factura actual', value: numeroFacturaActual.value },
+              ].map((field) => <div key={field.label}><label class="block text-xs font-bold mb-1.5" style={{ color: '#1E3A5F' }}>{field.label}</label><input value={field.value} readOnly class="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: '#F8FAFC', border: '1px solid #BFDBFE', color: '#111827', cursor: 'default' }} /></div>)}
             </div>
           </div>
 
           <div class="grid lg:grid-cols-2 gap-6">
             <div class="rounded-2xl p-6 shadow-sm" style={{ background: '#fff', border: '1px solid rgba(15,23,42,0.06)' }}>
               <SeccionEncabezado icono={<MessageCircle size={17} style={{ color: '#fff' }} />} titulo="Canales de contacto" subtitulo="WhatsApp, redes sociales y teléfono" gradient="linear-gradient(135deg, #0EA5E9 0%, #38BDF8 100%)" />
-              <div class="space-y-3 mb-5">{store.canales.map((canal) => { const c = cfg(canal); const Icon = c.icon; return <div key={canal.id} class="flex items-center gap-3 p-3 rounded-xl" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0' }}><div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: c.bg }}><Icon size={16} style={{ color: c.color }} /></div><div class="flex-1 min-w-0"><div class="text-xs font-bold" style={{ color: '#374151' }}>{canal.tipo}</div><div class="text-xs truncate" style={{ color: '#94A3B8' }}>{canal.identificador}</div></div><div class="flex items-center gap-2"><button onClick={() => updateCanal(canal.id, { activo: !canal.activo })} class="flex items-center gap-1 text-xs px-2 py-1 rounded-lg font-semibold transition-colors" style={{ background: canal.activo ? '#F0FDF4' : '#F8FAFC', color: canal.activo ? '#16A34A' : '#94A3B8' }}>{canal.activo ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}{canal.activo ? 'Activo' : 'Inactivo'}</button><button onClick={() => deleteCanal(canal.id)} class="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: '#FEF2F2' }}><Trash2 size={13} style={{ color: '#F87171' }} /></button></div></div>; })}</div>
-              <div class="rounded-2xl p-4" style={{ background: '#F8FAFC', border: '1px dashed #BAE6FD' }}><div class="flex items-center gap-2 mb-3"><Plus size={14} style={{ color: '#38BDF8' }} /><span class="text-xs font-bold" style={{ color: '#0F172A' }}>Agregar canal nuevo</span></div><div class="grid grid-cols-2 gap-3"><select value={nuevoTipo.value} onChange={(e) => (nuevoTipo.value = (e.target as HTMLSelectElement).value)} class="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: '#fff', border: '1px solid #E2E8F0', color: '#374151' }}>{tiposCanal.map((t) => <option key={t}>{t}</option>)}</select><input value={nuevoId.value} onChange={(e) => (nuevoId.value = (e.target as HTMLInputElement).value)} placeholder="Usuario, número o nombre" class="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: '#fff', border: '1px solid #E2E8F0', color: '#111827' }} /><input value={nuevaUrl.value} onChange={(e) => (nuevaUrl.value = (e.target as HTMLInputElement).value)} placeholder="URL o enlace" class="col-span-2 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: '#fff', border: '1px solid #E2E8F0', color: '#111827' }} /><button onClick={agregarCanalNuevo} class="col-span-2 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold" style={{ background: '#0F172A', color: '#fff' }}><Plus size={12} /> Agregar canal</button></div></div>
+              {errorCanales.value && <div class="rounded-xl px-3 py-2 mb-3 text-xs font-semibold" style={{ background: '#FEF2F2', border: '1px solid #FECACA', color: '#B91C1C' }}>{errorCanales.value}</div>}
+              <div class="space-y-3 mb-5">{canales.value.map((canal) => { const c = cfg(canal); const Icon = c.icon; return <div key={canal.id} class="flex items-center gap-3 p-3 rounded-xl" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0' }}><div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: c.bg }}><Icon size={16} style={{ color: c.color }} /></div><div class="flex-1 min-w-0"><div class="text-xs font-bold" style={{ color: '#374151' }}>{canal.tipo}</div><div class="text-xs truncate" style={{ color: '#94A3B8' }}>{canal.nombre}</div></div><div class="flex items-center gap-2"><button disabled={cargandoCanales.value} onClick={() => alternarCanal(canal)} class="flex items-center gap-1 text-xs px-2 py-1 rounded-lg font-semibold transition-colors" style={{ background: canal.activo ? '#F0FDF4' : '#F8FAFC', color: canal.activo ? '#16A34A' : '#94A3B8' }}>{canal.activo ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}{canal.activo ? 'Activo' : 'Inactivo'}</button><button disabled={cargandoCanales.value || !canal.activo} onClick={() => eliminarCanal(canal)} class="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: canal.activo ? '#FEF2F2' : '#F8FAFC' }}><Trash2 size={13} style={{ color: canal.activo ? '#F87171' : '#CBD5E1' }} /></button></div></div>; })}{canales.value.length === 0 && <div class="text-xs text-center py-5 rounded-xl" style={{ background: '#F8FAFC', color: '#94A3B8', border: '1px solid #E2E8F0' }}>{cargandoCanales.value ? 'Cargando canales...' : 'Sin canales configurados'}</div>}</div>
+              <div class="rounded-2xl p-4" style={{ background: '#F8FAFC', border: '1px dashed #BAE6FD' }}><div class="flex items-center gap-2 mb-3"><Plus size={14} style={{ color: '#38BDF8' }} /><span class="text-xs font-bold" style={{ color: '#0F172A' }}>Agregar canal nuevo</span></div><div class="grid grid-cols-2 gap-3"><select value={nuevoTipo.value} onChange={(e) => (nuevoTipo.value = (e.target as HTMLSelectElement).value)} class="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: '#fff', border: '1px solid #E2E8F0', color: '#374151' }}>{tiposCanal.map((t) => <option key={t}>{t}</option>)}</select><input value={nuevoId.value} onChange={(e) => (nuevoId.value = (e.target as HTMLInputElement).value)} placeholder="Usuario, número o nombre" class="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: '#fff', border: '1px solid #E2E8F0', color: '#111827' }} /><input value={nuevaUrl.value} onChange={(e) => (nuevaUrl.value = (e.target as HTMLInputElement).value)} placeholder="https://..." class="col-span-2 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: '#fff', border: '1px solid #E2E8F0', color: '#111827' }} /><button disabled={cargandoCanales.value} onClick={agregarCanalNuevo} class="col-span-2 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold" style={{ background: '#0F172A', color: '#fff' }}><Plus size={12} /> Agregar canal</button></div></div>
             </div>
 
             <div class="rounded-2xl p-6 shadow-sm" style={{ background: '#fff', border: '1px solid rgba(15,23,42,0.06)' }}>
               <SeccionEncabezado icono={<Eye size={17} style={{ color: '#fff' }} />} titulo="Vista previa de tienda pública" subtitulo="Se actualiza con los canales activos" gradient="linear-gradient(135deg, #1E293B 0%, #0F172A 100%)" />
-              <div class="rounded-2xl p-5" style={{ background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)' }}><div class="flex items-center gap-3 mb-4"><div class="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: '#38BDF8' }}><Globe size={18} style={{ color: '#0F172A' }} /></div><div><div class="text-white font-bold">Turbo Auto F&M 504</div><div class="text-xs" style={{ color: '#94A3B8' }}>Catálogo público</div></div></div><div class="space-y-2">{canalesActivos.map((canal) => { const c = cfg(canal); const Icon = c.icon; return <a key={canal.id} href={canal.url || '#'} target="_blank" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.08)' }}><Icon size={17} style={{ color: c.color }} /><div><div class="text-xs font-bold" style={{ color: '#fff' }}>Contactar por {canal.tipo}</div><div class="text-xs" style={{ color: '#94A3B8' }}>{canal.identificador}</div></div></a>; })}{canalesActivos.length === 0 && <div class="text-xs text-center py-6" style={{ color: '#94A3B8' }}>Sin canales activos configurados</div>}</div></div>
+              <div class="rounded-2xl p-5" style={{ background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)' }}><div class="flex items-center gap-3 mb-4"><div class="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: '#38BDF8' }}><Globe size={18} style={{ color: '#0F172A' }} /></div><div><div class="text-white font-bold">Turbo Auto F&M 504</div><div class="text-xs" style={{ color: '#94A3B8' }}>Catálogo público</div></div></div><div class="space-y-2">{canalesActivos.map((canal) => { const c = cfg(canal); const Icon = c.icon; return <a key={canal.id} href={canal.url || '#'} target="_blank" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.08)' }}><Icon size={17} style={{ color: c.color }} /><div><div class="text-xs font-bold" style={{ color: '#fff' }}>Contactar por {canal.tipo}</div><div class="text-xs" style={{ color: '#94A3B8' }}>{canal.nombre}</div></div></a>; })}{canalesActivos.length === 0 && <div class="text-xs text-center py-6" style={{ color: '#94A3B8' }}>Sin canales activos configurados</div>}</div></div>
             </div>
           </div>
 

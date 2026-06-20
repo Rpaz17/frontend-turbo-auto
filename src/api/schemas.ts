@@ -46,9 +46,10 @@ export const redSocialSchema = z.object({
 export type RedSocial = z.infer<typeof redSocialSchema>;
 
 export const createRedSocialSchema = z.object({
-  name: z.string(),
+  nombre: z.string(),
+  tipo: z.string(),
   url: z.string(),
-  active: z.boolean().optional(),
+  activo: z.boolean().optional(),
 });
 export type CreateRedSocial = z.infer<typeof createRedSocialSchema>;
 
@@ -59,6 +60,7 @@ export const sucursalSchema = z.object({
   id: z.union([z.string(), z.number()]),
   nombre: z.string(),
   direccion: z.string(),
+  codigo_facturacion: z.string().optional(),
 });
 export type Sucursal = z.infer<typeof sucursalSchema>;
 
@@ -201,7 +203,7 @@ export const createProductSchema = z.object({
   proveedor_id: z.string().optional(),
   tipo: z.string().optional(),
   proveedor: z.string().optional(),
-  codigo: z.string(),
+  codigo: z.string().optional(),
   nombre: z.string(),
   precio: z.string(),
   isv: z.string().optional(),
@@ -296,6 +298,7 @@ export const caiSchema = z.object({
   codigo_cai: z.string(),
   fecha_vencimiento: z.string(),
   fecha_emision: z.string(),
+  sucursal_id: z.union([z.string(), z.number()]).transform(String),
 });
 export type Cai = z.infer<typeof caiSchema>;
 
@@ -304,13 +307,14 @@ export const createCaiSchema = z.object({
   codigo_cai: z.string(),
   fecha_vencimiento: z.string(),
   fecha_emision: z.string(),
+  sucursal_id: z.union([z.string(), z.number()]),
 });
 
 export const caiRangoSchema = z.object({
   id: z.string(),
   cai_id: z.string(),
-  sucursal_id: z.number(),
-  establecimiento: z.string(),
+  sucursal_id: z.number().optional(),
+  establecimiento: z.string().optional(),
   punto_emision: z.string(),
   tipo_documento: z.string(),
   rango_inicio: z.number(),
@@ -321,6 +325,15 @@ export const caiRangoSchema = z.object({
   fecha_cierre: z.string().nullable().optional(),
   created_at: z.string(),
   updated_at: z.string(),
+  cai: z.object({
+    id: z.string(),
+    descripcion: z.string(),
+    codigo_cai: z.string(),
+    fecha_vencimiento: z.string(),
+    fecha_emision: z.string(),
+    sucursal_id: z.union([z.string(), z.number()]).transform(String),
+    sucursal: sucursalSchema.optional(),
+  }).optional(),
 });
 export type CaiRango = z.infer<typeof caiRangoSchema>;
 
