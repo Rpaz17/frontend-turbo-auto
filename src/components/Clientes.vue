@@ -27,6 +27,8 @@ export default defineComponent({
     const cargando = ref(false);
     const guardando = ref(false);
     const error = ref<string | null>(null);
+    const errorTelefono = ref('');
+    const errorRtn = ref('');
 
     const historialCliente = ref<any[]>([]);
     const cargandoHistorial = ref(false);
@@ -147,6 +149,16 @@ export default defineComponent({
       }
     };
 
+    const activarCliente = async (cliente: Client) => {
+      try {
+        await updateClient(cliente.id, { activo: true });
+        await cargarClientes();
+      } catch (e) {
+        console.error('Error activando cliente:', e);
+        error.value = 'No se pudo activar el cliente';
+      }
+    };
+
     return () => {
       const filtrados = clientes.value.filter(
         (c) =>
@@ -251,9 +263,15 @@ export default defineComponent({
                         <button onClick={() => abrirModalEditar(seleccionado)} class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold" style={{ background: '#F8FAFC', color: '#374151', border: '1px solid #E2E8F0' }}>
                           <Edit2 size={11} /> Editar
                         </button>
-                        <button onClick={() => desactivarCliente(seleccionado)} class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold" style={{ background: '#FEF2F2', color: '#F87171', border: '1px solid #FECACA' }}>
-                          <Trash2 size={11} /> Desactivar
-                        </button>
+                        {seleccionado.activo ? (
+                          <button onClick={() => desactivarCliente(seleccionado)} class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold" style={{ background: '#FEF2F2', color: '#F87171', border: '1px solid #FECACA' }}>
+                            <Trash2 size={11} /> Desactivar
+                          </button>
+                        ) : (
+                          <button onClick={() => activarCliente(seleccionado)} class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold" style={{ background: '#F0FDF4', color: '#16A34A', border: '1px solid #BBF7D0' }}>
+                            <Plus size={11} /> Activar
+                          </button>
+                        )}
                       </div>
                     </div>
                     <div class="grid grid-cols-2 gap-3">
@@ -340,10 +358,18 @@ export default defineComponent({
                       value={form.value.telefono}
                       inputmode="numeric"
                       maxlength={20}
-                      onInput={(e) => (form.value.telefono = soloNumeros((e.target as HTMLInputElement).value))}
+                      onInput={(e) => {
+                        const valorOriginal = (e.target as HTMLInputElement).value;
+                        const limpio = soloNumeros(valorOriginal);
+                        form.value.telefono = limpio;
+                        errorTelefono.value = valorOriginal !== limpio ? 'Solo se permiten números' : '';
+                      }}
                       class="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
                       style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', color: '#111827' }}
                     />
+                    {errorTelefono.value && (
+                      <p class="text-xs mt-1" style={{ color: '#EF4444' }}>{errorTelefono.value}</p>
+                    )}
                   </div>
                   <div>
                     <label class="block text-xs font-semibold mb-1.5" style={{ color: '#374151' }}>Dirección</label>
@@ -360,10 +386,18 @@ export default defineComponent({
                       value={form.value.rtn}
                       inputmode="numeric"
                       maxlength={14}
-                      onInput={(e) => (form.value.rtn = soloNumeros((e.target as HTMLInputElement).value))}
+                      onInput={(e) => {
+                        const valorOriginal = (e.target as HTMLInputElement).value;
+                        const limpio = soloNumeros(valorOriginal);
+                        form.value.rtn = limpio;
+                        errorRtn.value = valorOriginal !== limpio ? 'Solo se permiten números' : '';
+                      }}
                       class="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
                       style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', color: '#111827' }}
                     />
+                    {errorRtn.value && (
+                      <p class="text-xs mt-1" style={{ color: '#EF4444' }}>{errorRtn.value}</p>
+                    )}
                   </div>
                 </div>
                 <div class="flex gap-3 px-6 py-4" style={{ borderTop: '1px solid #F1F5F9' }}>

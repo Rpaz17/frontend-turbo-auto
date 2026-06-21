@@ -17,16 +17,17 @@ const facturasListWrapperSchema = z.object({
 });
 
 /** GET /facturas */
+/** GET /facturas */
 export async function getFacturas(params?: {
   cliente?: string;
   fecha?: string;
   numero?: string;
 }): Promise<Factura[]> {
-  const res = await request('/facturas', facturasListWrapperSchema, {
+  const res = await request('/facturas', z.array(facturaSchema), {
     query: params,
     auth: true,
   });
-  return Array.isArray(res.data) ? res.data : [res.data];
+  return res;
 }
 
 /** POST /facturas */
