@@ -80,7 +80,7 @@ export const updateSucursalSchema = createSucursalSchema.partial();
 // ── Clientes ─────────────────────────────────────────────────────────────────
 export const clientSchema = z.object({
   id: z.string(),
-  rtn: z.string(),
+  rtn: z.string().nullable(),
   nombre: z.string(),
   telefono: z.string(),
   direccion: z.string(),
