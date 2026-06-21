@@ -1,6 +1,5 @@
 import { request } from "../lib/http";
 import {
-  clientSchema,
   clientResponseSchema,
   createClientSchema,
   updateClientSchema,
@@ -12,28 +11,31 @@ import {
 /** GET /clientes */
 export async function getClients(): Promise<Client[]> {
   const res = await request("/clientes", clientResponseSchema, { auth: true });
-  return res as Client[];
+  return Array.isArray(res.data) ? res.data : [res.data];
 }
 
 /** POST /clientes */
-export function createClient(client: CreateClient): Promise<any> {
-  return request("/clientes", clientResponseSchema, {
+export async function createClient(client: CreateClient): Promise<Client> {
+  const res = await request("/clientes", clientResponseSchema, {
     method: "POST",
     body: client,
     auth: true,
   });
+  return Array.isArray(res.data) ? res.data[0] : res.data;
 }
 
 /** GET /clientes/{id} */
-export function getClient(id: string): Promise<any> {
-  return request(`/clientes/${id}`, clientResponseSchema, { auth: true });
+export async function getClient(id: string): Promise<Client> {
+  const res = await request(`/clientes/${id}`, clientResponseSchema, { auth: true });
+  return Array.isArray(res.data) ? res.data[0] : res.data;
 }
 
 /** PATCH /clientes/{id} */
-export function updateClient(id: string, client: UpdateClient): Promise<any> {
-  return request(`/clientes/${id}`, clientResponseSchema, {
+export async function updateClient(id: string, client: UpdateClient): Promise<Client> {
+  const res = await request(`/clientes/${id}`, clientResponseSchema, {
     method: "PATCH",
     body: client,
     auth: true,
   });
+  return Array.isArray(res.data) ? res.data[0] : res.data;
 }

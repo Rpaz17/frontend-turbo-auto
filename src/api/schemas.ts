@@ -89,9 +89,10 @@ export const clientSchema = z.object({
 });
 export type Client = z.infer<typeof clientSchema>;
 
-export const clientResponseSchema = z.array(
-  z.union([clientSchema, z.array(clientSchema)]),
-);
+export const clientResponseSchema = z.object({
+  data: z.union([clientSchema, z.array(clientSchema)]),
+  message: z.string(),
+});
 
 export const createClientSchema = z.object({
   rtn: z.string(),
