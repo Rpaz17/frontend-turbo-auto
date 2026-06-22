@@ -146,10 +146,7 @@ export default defineComponent({
                   {filtrados.value.map((p) => (
                     <div key={p.id} onClick={() => abrirDetalle(p.id)} class="rounded-2xl overflow-hidden shadow-sm cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5" style={{ background: '#fff', border: '1px solid rgba(15,23,42,0.06)' }}>
                       <div class="aspect-video relative flex items-center justify-center" style={{ background: '#F1F5F9' }}>
-                        <div class="flex flex-col items-center gap-1.5" style={{ color: '#CBD5E1' }}>
-                          <ShoppingBag size={32} />
-                          <span class="text-xs font-semibold">{p.codigo}</span>
-                        </div>
+                        {p.imagen_url ? <img src={p.imagen_url} alt={p.nombre} class="w-full h-full object-cover" /> : <div class="flex flex-col items-center gap-1.5" style={{ color: '#CBD5E1' }}><ShoppingBag size={32} /><span class="text-xs font-semibold">{p.codigo}</span></div>}
                       </div>
                       <div class="p-4">
                         <span class="text-xs font-semibold px-2 py-0.5 rounded-md mb-2 inline-block" style={{ background: '#F0F9FF', color: '#38BDF8' }}>{p.codigo}</span>

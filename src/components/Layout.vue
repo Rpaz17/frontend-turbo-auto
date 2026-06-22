@@ -8,6 +8,7 @@ import {
 } from "lucide-vue-next";
 import { logout } from '../api';
 import logoUrl from '../assets/turbo-auto-logo.png';
+import { useStockNotifications } from '../composables/useStockNotifications';
 
 const navItems = [
   { to: "/panel",         label: "Panel general",    icon: LayoutDashboard, accentColor: "#38BDF8", dotColor: "#38BDF8" },
@@ -30,17 +31,10 @@ export default defineComponent({
     const setSidebarOpen = (next: any) => { sidebarOpen.value = typeof next === 'function' ? next(sidebarOpen.value) : next; };
     const notifOpen = ref(false);
     const setNotifOpen = (next: any) => { notifOpen.value = typeof next === 'function' ? next(notifOpen.value) : next; };
-    const alerts = ref([
-      { id: 1, text: "Filtro de aceite 5W-30 — stock crítico (Sucursal Central)", type: "danger" },
-      { id: 2, text: "Pastillas de freno Bosch — advertencia de nivel bajo", type: "warning" },
-      { id: 3, text: "Bujías NGK — sobrestock detectado (Sucursal Norte)", type: "info" },
-    ]);
-    const setAlerts = (next: any) => { alerts.value = typeof next === 'function' ? next(alerts.value) : next; };
+    const { notifications, removeNotification } = useStockNotifications();
 
-    const eliminarAlerta = (id: number) => {
-      if (confirm("¿Estás seguro de eliminar esta alerta?")) {
-        setAlerts((prev: typeof alerts.value) => prev.filter((a) => a.id !== id));
-      }
+    const eliminarAlerta = (id: string) => {
+      removeNotification(id);
     };
 
     const currentItem = computed(() => navItems.find((n) => n.to === route.path));
@@ -146,14 +140,6 @@ export default defineComponent({
 
                 <span class={active ? "font-semibold" : ""}>{item.label}</span>
 
-                {item.to === "/inventario" && (
-                  <span
-                    class="ml-auto text-xs px-1.5 py-0.5 rounded-md font-bold"
-                    style={{ background: "#F87171", color: "#fff" }}
-                  >
-                    3
-                  </span>
-                )}
               </router-link>
             );
           })}
@@ -228,7 +214,7 @@ export default defineComponent({
                 style={{ background: "#F1F5F9" }}
               >
                 <Bell size={16} style={{ color: "#64748B" }} />
-                {alerts.value.length > 0 && (
+                {notifications.value.length > 0 && (
                   <span
                     class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full"
                     style={{ background: "#F87171", boxShadow: "0 0 0 2px #fff" }}
@@ -248,32 +234,25 @@ export default defineComponent({
                     <span class="font-bold text-sm" style={{ color: "#0F172A" }}>
                       Alertas activas
                     </span>
-                    {alerts.value.length > 0 && (
+                    {notifications.value.length > 0 && (
                       <span
                         class="text-xs px-2 py-0.5 rounded-full font-semibold"
                         style={{ background: "#FEF2F2", color: "#EF4444" }}
                       >
-                        {alerts.value.length}
+                        {notifications.value.length}
                       </span>
                     )}
                   </div>
                   <div class="divide-y" style={{ borderColor: "#F8FAFC" }}>
-                    {alerts.value.map((a) => (
+                    {notifications.value.map((a) => (
                       <div key={a.id} class="px-4 py-3 flex items-start gap-3">
                         <AlertTriangle
                           size={13}
                           class="mt-0.5 flex-shrink-0"
-                          style={{
-                            color:
-                              a.type === "danger"
-                                ? "#F87171"
-                                : a.type === "warning"
-                                ? "#FB923C"
-                                : "#38BDF8",
-                          }}
+                          style={{ color: "#F87171" }}
                         />
                         <span class="text-xs flex-1" style={{ color: "#374151" }}>
-                          {a.text}
+                          {a.producto_nombre} se agotó en {a.sucursal_nombre ?? `Sucursal ${a.sucursal_id}`} al generar la factura {a.numero_factura}.
                         </span>
                         <button
                           onClick={() => eliminarAlerta(a.id)}
@@ -283,7 +262,7 @@ export default defineComponent({
                         </button>
                       </div>
                     ))}
-                    {alerts.value.length === 0 && (
+                    {notifications.value.length === 0 && (
                       <div class="px-4 py-6 text-center text-xs" style={{ color: "#94A3B8" }}>
                         Sin alertas activas
                       </div>

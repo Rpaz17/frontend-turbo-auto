@@ -173,6 +173,7 @@ export type CreateFacturaDto = z.infer<typeof createFacturaDtoSchema>;
 export const productSchema = z.object({
   id: z.string(),
   imagen_id: z.string().nullable().optional(),
+  imagen_url: z.string().optional(),
   tipo_producto_id: z.string().nullable().optional(),
   proveedor_id: z.string().nullable().optional(),
   codigo: z.string(),
