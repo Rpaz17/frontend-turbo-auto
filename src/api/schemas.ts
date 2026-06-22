@@ -80,24 +80,25 @@ export const updateSucursalSchema = createSucursalSchema.partial();
 // ── Clientes ─────────────────────────────────────────────────────────────────
 export const clientSchema = z.object({
   id: z.string(),
-  rtn: z.string(),
+  rtn: z.string().nullable(),
   nombre: z.string(),
-  telefono: z.string(),
-  direccion: z.string(),
+  telefono: z.string().nullable(),
+  direccion: z.string().nullable(),
   created_at: z.string(),
   activo: z.boolean(),
 });
 export type Client = z.infer<typeof clientSchema>;
 
-export const clientResponseSchema = z.array(
-  z.union([clientSchema, z.array(clientSchema)]),
-);
+export const clientResponseSchema = z.object({
+  data: z.union([clientSchema, z.array(clientSchema)]),
+  message: z.string(),
+});
 
 export const createClientSchema = z.object({
-  rtn: z.string(),
+  rtn: z.string().optional(),
   nombre: z.string(),
-  telefono: z.string(),
-  direccion: z.string(),
+  telefono: z.string().optional(),
+  direccion: z.string().optional(),
 });
 export type CreateClient = z.infer<typeof createClientSchema>;
 
