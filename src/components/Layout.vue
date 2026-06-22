@@ -3,7 +3,7 @@ import { defineComponent, ref, computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import {
   LayoutDashboard, Package, ShoppingCart, Users, BarChart3,
-  Building2, Settings, Store, LogOut, Bell,
+  Building2, Settings, Store, LogOut, Bell, Clock,
   Menu, X, AlertTriangle, Trash2,
 } from "lucide-vue-next";
 import { logout } from '../api';
@@ -13,6 +13,7 @@ const navItems = [
   { to: "/panel",         label: "Panel general",    icon: LayoutDashboard, accentColor: "#38BDF8", dotColor: "#38BDF8" },
   { to: "/inventario",    label: "Inventario",       icon: Package,         accentColor: "#38BDF8", dotColor: "#38BDF8" },
   { to: "/ventas",        label: "Facturación",      icon: ShoppingCart,    accentColor: "#F87171", dotColor: "#F87171" },
+  { to: "/historial",    label: "Historial de Ventas", icon: Clock,       accentColor: "#A78BFA", dotColor: "#A78BFA" },
   { to: "/clientes",      label: "Clientes",         icon: Users,           accentColor: "#FB923C", dotColor: "#FB923C" },
   { to: "/reportes",      label: "Reportes",         icon: BarChart3,       accentColor: "#FDBA74", dotColor: "#FDBA74" },
   { to: "/sucursales",    label: "Sucursales",       icon: Building2,       accentColor: "#818CF8", dotColor: "#818CF8" },

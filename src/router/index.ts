@@ -38,6 +38,12 @@ const router = createRouter({
           meta: { requiresAuth: true },
         },
         {
+          path: 'historial',
+          name: 'historial',
+          component: () => import('../pages/HistorialVentasPage.vue'),
+          meta: { requiresAuth: true },
+        },
+        {
           path: 'clientes',
           name: 'clientes',
           component: () => import('../pages/ClientesPage.vue'),
