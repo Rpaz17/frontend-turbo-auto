@@ -1165,20 +1165,6 @@ export default defineComponent({
                                             </span>
                                         </div>
                                     )}
-                                    <div
-                                        class="px-3 py-2 rounded-xl text-xs"
-                                        style={{
-                                            background: "#F0F9FF",
-                                            color: "#0369A1",
-                                            border: "1px solid #BAE6FD",
-                                        }}
-                                    >
-                                        <strong>Demo:</strong> La contraseña del
-                                        CAI es{" "}
-                                        <code class="font-mono font-semibold">
-                                            cai2024
-                                        </code>
-                                    </div>
                                 </div>
                                 <div
                                     class="flex gap-3 px-6 py-4"
