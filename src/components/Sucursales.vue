@@ -2,7 +2,7 @@
 import { computed, defineComponent, onMounted, ref } from 'vue';
 import { AlertCircle, Building2, Calendar, Edit2, FileText, Loader2, MapPin, Plus, RefreshCw, ShieldCheck, Trash2, X } from 'lucide-vue-next';
 import { createSucursal, deleteSucursal, getSucursales, updateSucursal } from '../api/sucursales';
-import { createCai, createCaiRango, getCaiRangos, getCais, updateCai, updateCaiRango } from '../api/cai';
+import { createCai, createCaiRango, getCaiRangos, getCais } from '../api/cai';
 import type { Cai, CaiRango, Sucursal } from '../api/schemas';
 
 interface SucursalForm {
@@ -61,8 +61,6 @@ export default defineComponent({
     const error = ref('');
     const modal = ref(false);
     const sucursalEditando = ref<Sucursal | null>(null);
-    const caiEditando = ref<Cai | null>(null);
-    const rangoEditando = ref<CaiRango | null>(null);
     const form = ref<SucursalForm>({ ...formVacio, fecha_emision: hoyInput() });
 
     const cargarDatos = async () => {
@@ -84,8 +82,6 @@ export default defineComponent({
 
     const abrirModalNueva = () => {
       sucursalEditando.value = null;
-      caiEditando.value = null;
-      rangoEditando.value = null;
       form.value = { ...formVacio, fecha_emision: hoyInput() };
       modal.value = true;
       error.value = '';
@@ -97,8 +93,6 @@ export default defineComponent({
       const rangoSucursal = rangosCai.find((rango) => rango.estado === 'ACTIVO') ?? rangosCai[0] ?? null;
 
       sucursalEditando.value = sucursal;
-      caiEditando.value = caiSucursal;
-      rangoEditando.value = rangoSucursal;
       form.value = {
         ...formVacio,
         nombre: sucursal.nombre,
@@ -121,18 +115,16 @@ export default defineComponent({
     const cerrarModal = () => {
       modal.value = false;
       sucursalEditando.value = null;
-      caiEditando.value = null;
-      rangoEditando.value = null;
       form.value = { ...formVacio, fecha_emision: hoyInput() };
     };
 
-    const debeCrearCai = computed(() => Boolean(form.value.codigo_cai.trim()));
+    const puedeGuardarCai = computed(() => !sucursalEditando.value && Boolean(form.value.codigo_cai.trim()));
 
     const validar = () => {
       if (!form.value.nombre.trim()) return 'El nombre de la sucursal es obligatorio.';
       if (!form.value.direccion.trim()) return 'La dirección es obligatoria.';
       if (!/^\d{3}$/.test(form.value.codigo_facturacion.trim())) return 'El código de facturación debe tener exactamente 3 dígitos.';
-      if (!debeCrearCai.value) return '';
+      if (!puedeGuardarCai.value) return '';
       if (!form.value.cai_descripcion.trim()) return 'La descripción del CAI es obligatoria.';
       if (!form.value.fecha_emision) return 'La fecha de emisión del CAI es obligatoria.';
       if (!form.value.fecha_vencimiento) return 'La fecha de vencimiento del CAI es obligatoria.';
@@ -161,7 +153,7 @@ export default defineComponent({
         const response = sucursalEditando.value ? await updateSucursal(sucursalEditando.value.id, payload) : await createSucursal(payload);
         const sucursal = response.data as Sucursal;
 
-        if (debeCrearCai.value) {
+        if (puedeGuardarCai.value) {
           const caiPayload = {
             descripcion: form.value.cai_descripcion.trim(),
             codigo_cai: form.value.codigo_cai.trim(),
@@ -170,7 +162,7 @@ export default defineComponent({
             sucursal_id: Number(sucursal.id),
           };
 
-          const cai = caiEditando.value ? await updateCai(caiEditando.value.id, caiPayload) : await createCai(caiPayload);
+          const cai = await createCai(caiPayload);
 
           const rangoPayload = {
             cai_id: cai.id,
@@ -181,11 +173,7 @@ export default defineComponent({
             correlativo_actual: Number(form.value.correlativo_actual || 0),
           };
 
-          if (rangoEditando.value) {
-            await updateCaiRango(rangoEditando.value.id, rangoPayload);
-          } else {
-            await createCaiRango(rangoPayload);
-          }
+          await createCaiRango(rangoPayload);
         }
 
         cerrarModal();
@@ -265,7 +253,7 @@ export default defineComponent({
 
           {modal.value && <div class="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(15,23,42,0.5)' }}><div class="w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden" style={{ background: '#fff' }}><div class="flex items-center justify-between px-6 py-5" style={{ borderBottom: '1px solid #F1F5F9' }}><h2 class="font-bold" style={{ color: '#0F172A' }}>{sucursalEditando.value ? 'Editar sucursal' : 'Agregar sucursal'}</h2><button onClick={cerrarModal} class="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: '#F8FAFC' }}><X size={15} style={{ color: '#64748B' }} /></button></div><div class="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
             <div class="grid md:grid-cols-3 gap-4">{[{ label: 'Nombre de la sucursal', field: 'nombre' as const, placeholder: 'Ej. Sucursal Occidente', span: 'md:col-span-2' }, { label: 'Código facturación', field: 'codigo_facturacion' as const, placeholder: '001', span: '' }, { label: 'Dirección completa', field: 'direccion' as const, placeholder: 'Calle, colonia, ciudad', span: 'md:col-span-3' }].map((item) => <div key={item.field} class={item.span}><label class="block text-xs font-semibold mb-1.5" style={{ color: '#374151' }}>{item.label}</label><input value={form.value[item.field]} onInput={(e) => (form.value = { ...form.value, [item.field]: (e.target as HTMLInputElement).value })} placeholder={item.placeholder} class="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', color: '#111827' }} /></div>)}</div>
-            <div class="rounded-2xl p-4" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0' }}><div class="flex items-center gap-2 mb-4"><FileText size={15} style={{ color: '#38BDF8' }} /><h3 class="text-sm font-bold" style={{ color: '#0F172A' }}>CAI de la sucursal</h3><span class="text-xs" style={{ color: '#94A3B8' }}>Opcional</span></div><div class="grid md:grid-cols-2 gap-4">{[
+            <div class="rounded-2xl p-4" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0' }}><div class="flex items-center gap-2 mb-4"><FileText size={15} style={{ color: '#38BDF8' }} /><h3 class="text-sm font-bold" style={{ color: '#0F172A' }}>CAI de la sucursal</h3><span class="text-xs" style={{ color: '#94A3B8' }}>{sucursalEditando.value ? 'Solo lectura' : 'Opcional'}</span></div>{sucursalEditando.value && <div class="rounded-xl px-3 py-2 mb-4 text-xs font-semibold" style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', color: '#1D4ED8' }}>Los datos del CAI se editan únicamente en Configuración fiscal.</div>}<div class="grid md:grid-cols-2 gap-4">{[
               { label: 'Descripción CAI', field: 'cai_descripcion' as const, placeholder: 'CAI Principal 2026', type: 'text' },
               { label: 'Código CAI', field: 'codigo_cai' as const, placeholder: '69904E-...', type: 'text' },
               { label: 'Fecha emisión', field: 'fecha_emision' as const, placeholder: '', type: 'date' },
@@ -275,7 +263,7 @@ export default defineComponent({
               { label: 'Rango inicio', field: 'rango_inicio' as const, placeholder: '1', type: 'number' },
               { label: 'Rango final', field: 'rango_final' as const, placeholder: '50', type: 'number' },
               { label: 'Correlativo actual', field: 'correlativo_actual' as const, placeholder: '0', type: 'number' },
-            ].map((item) => <div key={item.field}><label class="block text-xs font-semibold mb-1.5" style={{ color: '#374151' }}>{item.label}</label><input type={item.type} value={form.value[item.field]} onInput={(e) => (form.value = { ...form.value, [item.field]: (e.target as HTMLInputElement).value })} placeholder={item.placeholder} class="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ background: '#fff', border: '1px solid #E2E8F0', color: '#111827' }} /></div>)}</div></div>
+            ].map((item) => <div key={item.field}><label class="block text-xs font-semibold mb-1.5" style={{ color: '#374151' }}>{item.label}</label><input type={item.type} disabled={Boolean(sucursalEditando.value)} value={form.value[item.field]} onInput={(e) => (form.value = { ...form.value, [item.field]: (e.target as HTMLInputElement).value })} placeholder={item.placeholder} class="w-full px-3 py-2.5 rounded-xl text-sm outline-none" style={{ background: sucursalEditando.value ? '#F1F5F9' : '#fff', border: '1px solid #E2E8F0', color: sucursalEditando.value ? '#64748B' : '#111827', cursor: sucursalEditando.value ? 'not-allowed' : 'text' }} /></div>)}</div></div>
           </div><div class="flex gap-3 px-6 py-4" style={{ borderTop: '1px solid #F1F5F9' }}><button onClick={cerrarModal} class="flex-1 py-2.5 rounded-xl text-sm font-semibold" style={{ background: '#F8FAFC', color: '#64748B', border: '1px solid #E2E8F0' }}>Cancelar</button><button onClick={guardarSucursal} disabled={guardando.value} class="flex-1 py-2.5 rounded-xl text-sm font-semibold" style={{ background: guardando.value ? '#94A3B8' : '#0F172A', color: '#fff' }}>{guardando.value ? 'Guardando...' : sucursalEditando.value ? 'Actualizar sucursal' : 'Guardar sucursal'}</button></div></div></div>}
         </div>
       );
