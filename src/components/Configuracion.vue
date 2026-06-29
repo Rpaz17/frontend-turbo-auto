@@ -29,7 +29,32 @@ import {
 } from "../api/ajustes";
 import { useCai } from "../composables/useCai";
 import { getSucursales } from "../api/sucursales";
+import { updateCai, updateCaiRango } from "../api/cai";
 import type { RedSocial, Sucursal } from "../api/schemas";
+
+interface CaiFiscalForm {
+    descripcion: string;
+    codigo_cai: string;
+    fecha_emision: string;
+    fecha_vencimiento: string;
+    punto_emision: string;
+    tipo_documento: string;
+    rango_inicio: string;
+    rango_final: string;
+    correlativo_actual: string;
+}
+
+const caiFiscalVacio: CaiFiscalForm = {
+    descripcion: "",
+    codigo_cai: "",
+    fecha_emision: "",
+    fecha_vencimiento: "",
+    punto_emision: "001",
+    tipo_documento: "01",
+    rango_inicio: "1",
+    rango_final: "",
+    correlativo_actual: "0",
+};
 
 const iconosPorTipo: Record<string, { icon: any; color: string; bg: string }> =
     {
@@ -120,6 +145,8 @@ export default defineComponent({
         const caiSeleccionado = ref("");
         const cargandoCai = ref(false);
         const errorCai = ref("");
+        const guardandoCai = ref(false);
+        const caiForm = ref<CaiFiscalForm>({ ...caiFiscalVacio });
         const { cais, rangos, loadCais, loadRangos } = useCai();
 
         const cargarConfiguracionFiscal = async () => {
@@ -217,6 +244,30 @@ export default defineComponent({
             { immediate: true },
         );
 
+        watch(
+            [caiActual, rangoActual],
+            ([cai, rango]) => {
+                caiForm.value = {
+                    descripcion: cai?.descripcion ?? "",
+                    codigo_cai: cai?.codigo_cai ?? "",
+                    fecha_emision: cai?.fecha_emision
+                        ? cai.fecha_emision.slice(0, 10)
+                        : "",
+                    fecha_vencimiento: cai?.fecha_vencimiento
+                        ? cai.fecha_vencimiento.slice(0, 10)
+                        : "",
+                    punto_emision: rango?.punto_emision ?? "001",
+                    tipo_documento: rango?.tipo_documento ?? "01",
+                    rango_inicio: rango ? String(rango.rango_inicio) : "1",
+                    rango_final: rango ? String(rango.rango_final) : "",
+                    correlativo_actual: rango
+                        ? String(rango.correlativo_actual)
+                        : "0",
+                };
+            },
+            { immediate: true },
+        );
+
         const verificarContrasena = () => {
             if (contrasena.value === "cai2024") {
                 caiDesbloqueado.value = true;
@@ -225,6 +276,86 @@ export default defineComponent({
                 errorContrasena.value = false;
             } else errorContrasena.value = true;
         };
+
+        const guardarConfiguracionFiscal = async () => {
+            if (!caiDesbloqueado.value || !caiActual.value) return;
+            if (!caiForm.value.descripcion.trim()) {
+                errorCai.value = "La descripción del CAI es obligatoria.";
+                return;
+            }
+            if (!caiForm.value.codigo_cai.trim()) {
+                errorCai.value = "El código CAI es obligatorio.";
+                return;
+            }
+            if (!caiForm.value.fecha_emision || !caiForm.value.fecha_vencimiento) {
+                errorCai.value = "Las fechas de emisión y vencimiento son obligatorias.";
+                return;
+            }
+            if (rangoActual.value) {
+                if (!/^\d{3}$/.test(caiForm.value.punto_emision.trim())) {
+                    errorCai.value = "El punto de emisión debe tener 3 dígitos.";
+                    return;
+                }
+                if (!/^\d{2}$/.test(caiForm.value.tipo_documento.trim())) {
+                    errorCai.value = "El tipo de documento debe tener 2 dígitos.";
+                    return;
+                }
+                if (
+                    !caiForm.value.rango_final ||
+                    Number(caiForm.value.rango_final) < Number(caiForm.value.rango_inicio)
+                ) {
+                    errorCai.value = "El rango final debe ser mayor o igual al rango inicial.";
+                    return;
+                }
+            }
+
+            guardandoCai.value = true;
+            errorCai.value = "";
+            try {
+                const caiActualizado = await updateCai(caiActual.value.id, {
+                    descripcion: caiForm.value.descripcion.trim(),
+                    codigo_cai: caiForm.value.codigo_cai.trim(),
+                    fecha_emision: caiForm.value.fecha_emision,
+                    fecha_vencimiento: caiForm.value.fecha_vencimiento,
+                    sucursal_id: Number(sucursalSeleccionada.value),
+                });
+                cais.value = cais.value.map((cai) =>
+                    cai.id === caiActualizado.id ? caiActualizado : cai,
+                );
+
+                if (rangoActual.value) {
+                    const rangoActualizado = await updateCaiRango(
+                        rangoActual.value.id,
+                        {
+                            cai_id: caiActualizado.id,
+                            punto_emision: caiForm.value.punto_emision.trim(),
+                            tipo_documento: caiForm.value.tipo_documento.trim(),
+                            rango_inicio: Number(caiForm.value.rango_inicio),
+                            rango_final: Number(caiForm.value.rango_final),
+                            correlativo_actual: Number(
+                                caiForm.value.correlativo_actual || 0,
+                            ),
+                        },
+                    );
+                    rangos.value = rangos.value.map((rango) =>
+                        rango.id === rangoActualizado.id
+                            ? rangoActualizado
+                            : rango,
+                    );
+                }
+
+                caiDesbloqueado.value = false;
+            } catch (error) {
+                console.error("Error al guardar configuración fiscal:", error);
+                errorCai.value =
+                    error instanceof Error
+                        ? error.message
+                        : "No se pudo guardar la configuración fiscal.";
+            } finally {
+                guardandoCai.value = false;
+            }
+        };
+
         const agregarCanalNuevo = async () => {
             if (!nuevoId.value.trim() || !nuevaUrl.value.trim()) {
                 errorCanales.value =
@@ -575,41 +706,84 @@ export default defineComponent({
                             </div>
                             {[
                                 {
+                                    label: "Descripción CAI",
+                                    field: "descripcion" as const,
+                                    type: "text",
+                                    placeholder: "CAI Principal 2026",
+                                    span: "col-span-2",
+                                    disabled: !caiActual.value,
+                                },
+                                {
+                                    label: "Código CAI",
+                                    field: "codigo_cai" as const,
+                                    type: "text",
+                                    placeholder: "69904E-...",
+                                    span: "col-span-2",
+                                    disabled: !caiActual.value,
+                                },
+                                {
                                     label: "Fecha de emisión",
-                                    value: fechaFiscal(
-                                        caiActual.value?.fecha_emision,
-                                    ),
+                                    field: "fecha_emision" as const,
+                                    type: "date",
+                                    placeholder: "",
+                                    span: "",
+                                    disabled: !caiActual.value,
                                 },
                                 {
                                     label: "Fecha de vencimiento",
-                                    value: fechaFiscal(
-                                        caiActual.value?.fecha_vencimiento,
-                                    ),
+                                    field: "fecha_vencimiento" as const,
+                                    type: "date",
+                                    placeholder: "",
+                                    span: "",
+                                    disabled: !caiActual.value,
                                 },
                                 {
-                                    label: "Estado del rango",
-                                    value:
-                                        rangoActual.value?.estado ??
-                                        "Sin rango",
+                                    label: "Punto emisión",
+                                    field: "punto_emision" as const,
+                                    type: "text",
+                                    placeholder: "001",
+                                    span: "",
+                                    disabled: !rangoActual.value,
                                 },
                                 {
-                                    label: "Rango autorizado — inicio",
-                                    value: rangoActual.value
-                                        ? `${rangoActual.value.punto_emision}-${rangoActual.value.tipo_documento}-${String(rangoActual.value.rango_inicio).padStart(8, "0")}`
-                                        : "N/D",
+                                    label: "Tipo documento",
+                                    field: "tipo_documento" as const,
+                                    type: "text",
+                                    placeholder: "01",
+                                    span: "",
+                                    disabled: !rangoActual.value,
                                 },
                                 {
-                                    label: "Rango autorizado — fin",
-                                    value: rangoActual.value
-                                        ? `${rangoActual.value.punto_emision}-${rangoActual.value.tipo_documento}-${String(rangoActual.value.rango_final).padStart(8, "0")}`
-                                        : "N/D",
+                                    label: "Rango inicio",
+                                    field: "rango_inicio" as const,
+                                    type: "number",
+                                    placeholder: "1",
+                                    span: "",
+                                    disabled: !rangoActual.value,
                                 },
                                 {
-                                    label: "Número de factura actual",
-                                    value: numeroFacturaActual.value,
+                                    label: "Rango final",
+                                    field: "rango_final" as const,
+                                    type: "number",
+                                    placeholder: "50",
+                                    span: "",
+                                    disabled: !rangoActual.value,
                                 },
-                            ].map((field) => (
-                                <div key={field.label}>
+                                {
+                                    label: "Correlativo actual",
+                                    field: "correlativo_actual" as const,
+                                    type: "number",
+                                    placeholder: "0",
+                                    span: "",
+                                    disabled: !rangoActual.value,
+                                },
+                            ].map((field) => {
+                                const deshabilitado =
+                                    !caiDesbloqueado.value ||
+                                    guardandoCai.value ||
+                                    field.disabled;
+                                return (
+                                <div key={field.label} class={field.span}>
                                     <label
                                         class="block text-xs font-bold mb-1.5"
                                         style={{ color: "#1E3A5F" }}
@@ -617,18 +791,102 @@ export default defineComponent({
                                         {field.label}
                                     </label>
                                     <input
-                                        value={field.value}
-                                        readOnly
+                                        type={field.type}
+                                        value={caiForm.value[field.field]}
+                                        disabled={deshabilitado}
+                                        onInput={(e) =>
+                                            (caiForm.value = {
+                                                ...caiForm.value,
+                                                [field.field]: (
+                                                    e.target as HTMLInputElement
+                                                ).value,
+                                            })
+                                        }
+                                        placeholder={field.placeholder}
                                         class="w-full px-3 py-2.5 rounded-xl text-xs outline-none"
                                         style={{
-                                            background: "#F8FAFC",
+                                            background: deshabilitado
+                                                ? "#F8FAFC"
+                                                : "#fff",
                                             border: "1px solid #BFDBFE",
-                                            color: "#111827",
-                                            cursor: "default",
+                                            color: deshabilitado
+                                                ? "#64748B"
+                                                : "#111827",
+                                            cursor: deshabilitado
+                                                ? "not-allowed"
+                                                : "text",
                                         }}
                                     />
                                 </div>
-                            ))}
+                                );
+                            })}
+                            <div>
+                                <label
+                                    class="block text-xs font-bold mb-1.5"
+                                    style={{ color: "#1E3A5F" }}
+                                >
+                                    Estado del rango
+                                </label>
+                                <input
+                                    value={rangoActual.value?.estado ?? "Sin rango"}
+                                    readOnly
+                                    class="w-full px-3 py-2.5 rounded-xl text-xs outline-none"
+                                    style={{
+                                        background: "#F8FAFC",
+                                        border: "1px solid #BFDBFE",
+                                        color: "#64748B",
+                                    }}
+                                />
+                            </div>
+                            <div class="col-span-2">
+                                <label
+                                    class="block text-xs font-bold mb-1.5"
+                                    style={{ color: "#1E3A5F" }}
+                                >
+                                    Número de factura actual
+                                </label>
+                                <input
+                                    value={numeroFacturaActual.value}
+                                    readOnly
+                                    class="w-full px-3 py-2.5 rounded-xl text-xs outline-none"
+                                    style={{
+                                        background: "#F8FAFC",
+                                        border: "1px solid #BFDBFE",
+                                        color: "#64748B",
+                                    }}
+                                />
+                            </div>
+                        </div>
+                        <div class="flex justify-end mt-5">
+                            <button
+                                disabled={
+                                    !caiDesbloqueado.value ||
+                                    !caiActual.value ||
+                                    guardandoCai.value
+                                }
+                                onClick={guardarConfiguracionFiscal}
+                                class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold"
+                                style={{
+                                    background:
+                                        caiDesbloqueado.value &&
+                                        caiActual.value &&
+                                        !guardandoCai.value
+                                            ? "#0F172A"
+                                            : "#CBD5E1",
+                                    color: "#fff",
+                                    cursor:
+                                        caiDesbloqueado.value &&
+                                        caiActual.value &&
+                                        !guardandoCai.value
+                                            ? "pointer"
+                                            : "not-allowed",
+                                }}
+                            >
+                                <Save size={14} />
+                                {guardandoCai.value
+                                    ? "Guardando..."
+                                    : "Guardar CAI"}
+                            </button>
                         </div>
                     </div>
 

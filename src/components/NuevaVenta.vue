@@ -3,13 +3,13 @@ import { defineComponent, ref, computed, onMounted } from 'vue';
 import {
   Search, Plus, Trash2, FileText, Printer, Eye, ChevronDown,
   User, Package, ShieldCheck, Lock, Save, X,
-  CreditCard, Banknote, Wrench, Loader2, AlertCircle
+  CreditCard, Banknote, Wrench, Loader2, AlertCircle, Calendar, Download, RefreshCw
 } from "lucide-vue-next";
 import { useProductos, formatPrecio } from '../composables/useProductos';
 import { useClientes } from '../composables/useClientes';
 import { useSucursales } from '../composables/useSucursales';
-import type { Product, Client, Sucursal } from '../api/schemas';
-import { generateFactura, exportFactura, getUserIdFromToken } from '../api';
+import type { Product, Client, Sucursal, Factura } from '../api/schemas';
+import { generateFactura, exportFactura, getFacturas, getUserIdFromToken } from '../api';
 import { getInventario } from '../api/inventario';
 import { broadcastFacturaCreada } from '../composables/useStockNotifications';
 
@@ -54,6 +54,121 @@ const restantes = totalRango - usados; // 12
 let lineaId = 1;
 let servicioId = 1;
 
+function numero(value: unknown) {
+  const parsed = Number(value ?? 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function fechaInput(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function fechaHoraApi(date: Date, finDelDia = false) {
+  const copy = new Date(date);
+  if (finDelDia) copy.setHours(23, 59, 59, 999);
+  else copy.setHours(0, 0, 0, 0);
+  return `${fechaInput(copy)}T${String(copy.getHours()).padStart(2, "0")}:${String(copy.getMinutes()).padStart(2, "0")}:${String(copy.getSeconds()).padStart(2, "0")}.${String(copy.getMilliseconds()).padStart(3, "0")}`;
+}
+
+function rangoSemana(fecha: string) {
+  const base = fecha ? new Date(`${fecha}T12:00:00`) : new Date();
+  const day = base.getDay();
+  const mondayOffset = day === 0 ? -6 : 1 - day;
+  const inicio = new Date(base);
+  inicio.setDate(base.getDate() + mondayOffset);
+  const fin = new Date(inicio);
+  fin.setDate(inicio.getDate() + 6);
+  return { inicio, fin };
+}
+
+function totalFactura(factura: Factura) {
+  const productos = factura.productos?.reduce((acc, p) => acc + numero(p.precio) * numero(p.cantidad), 0) ?? 0;
+  const servicios = factura.servicios?.reduce((acc, s) => acc + numero(s.total), 0) ?? 0;
+  return productos + servicios;
+}
+
+function escapeHtml(value: unknown) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function abrirPdfFacturasSemanales(facturas: Factura[], desde: Date, hasta: Date, cliente: string, formatMoney: (n: number) => string) {
+  const total = facturas.reduce((acc, factura) => acc + totalFactura(factura), 0);
+  const rows = facturas.map((factura) => `
+    <tr>
+      <td>${escapeHtml(factura.numero_factura)}</td>
+      <td>${escapeHtml(new Date(factura.fecha_emision).toLocaleDateString("es-HN"))}</td>
+      <td>${escapeHtml(factura.cliente?.nombre ?? "Consumidor Final")}</td>
+      <td class="num">${escapeHtml(formatMoney(totalFactura(factura)))}</td>
+    </tr>
+  `).join("");
+  const doc = `
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Facturas semanales</title>
+  <style>
+    @page { size: letter; margin: 0; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 14mm; font-family: Arial, sans-serif; color: #0f172a; background: #fff; }
+    .header { display: flex; justify-content: space-between; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 16px; }
+    .brand { font-size: 20px; font-weight: 800; }
+    .meta { text-align: right; font-size: 11px; color: #64748b; line-height: 1.5; }
+    .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+    .box { border: 1px solid #e2e8f0; background: #f8fafc; border-radius: 10px; padding: 10px; }
+    .label { color: #64748b; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+    .value { font-size: 16px; font-weight: 800; margin-top: 5px; }
+    table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+    th { text-align: left; background: #0f172a; color: #fff; padding: 8px; font-size: 10px; }
+    td { border-bottom: 1px solid #e2e8f0; padding: 7px 8px; }
+    .num { text-align: right; white-space: nowrap; }
+    .empty { color: #94a3b8; text-align: center; padding: 12px; background: #f8fafc; }
+    .actions { margin-top: 18px; text-align: center; }
+    button { border: 0; border-radius: 10px; background: #0f172a; color: #fff; padding: 11px 18px; font-size: 12px; font-weight: 800; cursor: pointer; }
+    @media print { .actions { display: none; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="brand">Turbo Auto F&amp;M 504</div>
+      <div class="label">Facturas semanales</div>
+    </div>
+    <div class="meta">
+      <div><strong>Semana:</strong> ${escapeHtml(desde.toLocaleDateString("es-HN"))} al ${escapeHtml(hasta.toLocaleDateString("es-HN"))}</div>
+      ${cliente ? `<div><strong>Cliente:</strong> ${escapeHtml(cliente)}</div>` : ""}
+      <div><strong>Generado:</strong> ${escapeHtml(new Date().toLocaleString("es-HN"))}</div>
+    </div>
+  </div>
+  <div class="summary">
+    <div class="box"><div class="label">Facturas</div><div class="value">${facturas.length.toLocaleString("es-HN")}</div></div>
+    <div class="box"><div class="label">Total semanal</div><div class="value">${escapeHtml(formatMoney(total))}</div></div>
+    <div class="box"><div class="label">Promedio</div><div class="value">${escapeHtml(formatMoney(facturas.length ? total / facturas.length : 0))}</div></div>
+  </div>
+  <table>
+    <thead><tr><th>Factura</th><th>Fecha</th><th>Cliente</th><th class="num">Total</th></tr></thead>
+    <tbody>${rows || `<tr><td colspan="4" class="empty">Sin facturas en esta semana</td></tr>`}</tbody>
+  </table>
+  <div class="actions"><button type="button" onclick="window.print()">Imprimir / Exportar PDF</button></div>
+  <script>window.addEventListener("load", () => setTimeout(() => window.print(), 250));<\/script>
+</body>
+</html>`;
+  const printWindow = window.open("", "_blank");
+  if (!printWindow) return false;
+  printWindow.document.open();
+  printWindow.document.write(doc);
+  printWindow.document.close();
+  return true;
+}
+
 
 export default defineComponent({
   name: 'NuevaVenta',
@@ -67,6 +182,7 @@ export default defineComponent({
     onMounted(() => {
       loadClientes();
       loadSucursales();
+      cargarFacturas();
     });
 
     const clienteId = ref("");
@@ -87,6 +203,11 @@ export default defineComponent({
       message: "",
       tone: "error",
     });
+    const facturas = ref<Factura[]>([]);
+    const cargandoFacturas = ref(false);
+    const exportandoSemana = ref(false);
+    const filtroFechaFactura = ref("");
+    const filtroClienteFactura = ref("");
 
     const mostrarPopup = (
       title: string,
@@ -98,6 +219,73 @@ export default defineComponent({
 
     const cerrarPopup = () => {
       popup.value = { ...popup.value, open: false };
+    };
+
+    const fmt = (n: number | undefined | null) => {
+      if (n === undefined || n === null || Number.isNaN(n)) return 'L. 0.00';
+      return `L. ${n.toLocaleString("es-HN", { minimumFractionDigits: 2 })}`;
+    };
+
+    const cargarFacturas = async () => {
+      cargandoFacturas.value = true;
+      try {
+        facturas.value = await getFacturas({
+          ...(filtroFechaFactura.value
+            ? {
+                desde: fechaHoraApi(new Date(`${filtroFechaFactura.value}T12:00:00`)),
+                hasta: fechaHoraApi(new Date(`${filtroFechaFactura.value}T12:00:00`), true),
+              }
+            : {}),
+          ...(filtroClienteFactura.value.trim() ? { cliente: filtroClienteFactura.value.trim() } : {}),
+        });
+      } catch (err: any) {
+        console.error("Error cargando facturas:", err);
+        mostrarPopup("No se pudieron cargar las facturas", err?.message ?? "Intenta de nuevo en unos segundos.");
+      } finally {
+        cargandoFacturas.value = false;
+      }
+    };
+
+    const verFactura = async (id: string) => {
+      try {
+        const html = await exportFactura(id);
+        const newWindow = window.open();
+        if (newWindow) {
+          newWindow.document.write(html);
+          newWindow.document.close();
+        } else {
+          mostrarPopup("No se pudo abrir la factura", "Permite las ventanas emergentes para visualizarla.", "warning");
+        }
+      } catch (err: any) {
+        mostrarPopup("No se pudo abrir la factura", err?.message ?? "Intenta de nuevo.");
+      }
+    };
+
+    const exportarFacturasSemanales = async () => {
+      exportandoSemana.value = true;
+      try {
+        const { inicio, fin } = rangoSemana(filtroFechaFactura.value || fechaInput());
+        const semanales = await getFacturas({
+          desde: fechaHoraApi(inicio),
+          hasta: fechaHoraApi(fin, true),
+          ...(filtroClienteFactura.value.trim() ? { cliente: filtroClienteFactura.value.trim() } : {}),
+        });
+        const opened = abrirPdfFacturasSemanales(
+          semanales,
+          inicio,
+          fin,
+          filtroClienteFactura.value.trim(),
+          fmt,
+        );
+        if (!opened) {
+          mostrarPopup("No se pudo exportar", "Permite las ventanas emergentes para generar el PDF semanal.", "warning");
+        }
+      } catch (err: any) {
+        console.error("Error exportando facturas semanales:", err);
+        mostrarPopup("No se pudo exportar", err?.message ?? "Intenta de nuevo.");
+      } finally {
+        exportandoSemana.value = false;
+      }
     };
 
     // Inputs for manually adding a service
@@ -257,6 +445,7 @@ export default defineComponent({
             );
           }
           limpiarFormulario();
+          await cargarFacturas();
         } else {
           mostrarPopup("No se pudo abrir la factura", "El backend no devolvió el ID de la factura generada.");
         }
@@ -302,11 +491,6 @@ export default defineComponent({
       return { subtotal, subtotalServicios, descuentos, exento, exonerado, isv15, total };
     });
 
-    const fmt = (n: number | undefined | null) => {
-      if (n === undefined || n === null || Number.isNaN(n)) return 'L. 0.00';
-      return `L. ${n.toLocaleString("es-HN", { minimumFractionDigits: 2 })}`;
-    };
-
     const filtProd = computed(() => {
       const q = busqProd.value.toLowerCase();
       if (!q) return [];
@@ -319,12 +503,25 @@ export default defineComponent({
       clientes.value.find((c) => c.id === clienteId.value)
     );
 
+    const facturasFiltradas = computed(() => {
+      const cliente = filtroClienteFactura.value.trim().toLowerCase();
+      const fecha = filtroFechaFactura.value;
+
+      return facturas.value.filter((factura) => {
+        const nombreCliente = factura.cliente?.nombre?.toLowerCase() ?? "";
+        const coincideCliente = !cliente || nombreCliente.includes(cliente);
+        const coincideFecha = !fecha || fechaInput(new Date(factura.fecha_emision)) === fecha;
+        return coincideCliente && coincideFecha;
+      });
+    });
+
     return () => {
       const popupStyle = {
         error: { bg: "#FEF2F2", color: "#DC2626", iconBg: "#FEE2E2", border: "#FECACA" },
         warning: { bg: "#FFF7ED", color: "#C2410C", iconBg: "#FFEDD5", border: "#FDBA74" },
         success: { bg: "#F0FDF4", color: "#16A34A", iconBg: "#DCFCE7", border: "#BBF7D0" },
       }[popup.value.tone];
+      const semanaExportacion = rangoSemana(filtroFechaFactura.value || fechaInput());
 
       return (
     <div class="space-y-5">
@@ -884,6 +1081,116 @@ export default defineComponent({
               <X size={14} /> Cancelar
             </button>
           </div>
+        </div>
+      </div>
+
+      <div class="rounded-2xl p-6 shadow-sm" style={{ background: "#fff", border: "1px solid rgba(15,23,42,0.06)" }}>
+        <div class="flex flex-wrap items-end justify-between gap-4 mb-5">
+          <div>
+            <h3 class="font-bold flex items-center gap-2" style={{ color: "#0F172A" }}>
+              <FileText size={16} style={{ color: "#38BDF8" }} /> Facturas emitidas
+            </h3>
+            <p class="text-xs mt-1" style={{ color: "#64748B" }}>
+              Consulta por fecha o cliente. La exportación usa solo la semana seleccionada.
+            </p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button
+              onClick={cargarFacturas}
+              disabled={cargandoFacturas.value}
+              class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold"
+              style={{ background: "#F8FAFC", color: "#0F172A", border: "1px solid #E2E8F0" }}
+            >
+              {cargandoFacturas.value ? <Loader2 class="animate-spin" size={14} /> : <RefreshCw size={14} />} Aplicar filtros
+            </button>
+            <button
+              onClick={exportarFacturasSemanales}
+              disabled={exportandoSemana.value}
+              class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold"
+              style={{ background: "#0F172A", color: "#fff", border: "1px solid #0F172A" }}
+            >
+              {exportandoSemana.value ? <Loader2 class="animate-spin" size={14} /> : <Download size={14} />} Exportar semana
+            </button>
+          </div>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-3 mb-4">
+          <div>
+            <label class="block text-xs font-semibold mb-1.5" style={{ color: "#374151" }}>Fecha</label>
+            <div class="relative">
+              <Calendar size={13} class="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "#94A3B8" }} />
+              <input
+                type="date"
+                value={filtroFechaFactura.value}
+                onChange={(e) => (filtroFechaFactura.value = (e.target as HTMLInputElement).value)}
+                class="w-full pl-9 pr-3 py-2.5 rounded-xl text-sm outline-none"
+                style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", color: "#374151" }}
+              />
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold mb-1.5" style={{ color: "#374151" }}>Nombre de cliente</label>
+            <div class="relative">
+              <Search size={13} class="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "#94A3B8" }} />
+              <input
+                value={filtroClienteFactura.value}
+                onInput={(e) => (filtroClienteFactura.value = (e.target as HTMLInputElement).value)}
+                placeholder="Buscar cliente..."
+                class="w-full pl-9 pr-3 py-2.5 rounded-xl text-sm outline-none"
+                style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", color: "#111827" }}
+              />
+            </div>
+          </div>
+          <div class="rounded-xl p-3" style={{ background: "#F0F9FF", border: "1px solid #BAE6FD" }}>
+            <div class="text-xs font-semibold" style={{ color: "#0369A1" }}>Semana a exportar</div>
+            <div class="text-sm font-bold mt-1" style={{ color: "#0F172A" }}>
+              {semanaExportacion.inicio.toLocaleDateString("es-HN")} - {semanaExportacion.fin.toLocaleDateString("es-HN")}
+            </div>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto rounded-xl" style={{ border: "1px solid #E2E8F0" }}>
+          <table class="w-full text-sm">
+            <thead style={{ background: "#F8FAFC" }}>
+              <tr>
+                {["Factura", "Fecha", "Cliente", "Productos", "Servicios", "Total", ""].map((h) => (
+                  <th key={h} class="text-left px-4 py-3 text-xs font-bold" style={{ color: "#64748B" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {cargandoFacturas.value ? (
+                <tr><td colspan={7} class="px-4 py-8 text-center text-xs" style={{ color: "#94A3B8" }}>Cargando facturas...</td></tr>
+              ) : facturasFiltradas.value.length === 0 ? (
+                <tr><td colspan={7} class="px-4 py-8 text-center text-xs" style={{ color: "#94A3B8" }}>Sin facturas para los filtros seleccionados</td></tr>
+              ) : (
+                facturasFiltradas.value.map((factura) => (
+                  <tr key={factura.id} style={{ borderTop: "1px solid #F1F5F9" }}>
+                    <td class="px-4 py-3">
+                      <div class="text-xs font-bold" style={{ color: "#0F172A" }}>{factura.numero_factura}</div>
+                    </td>
+                    <td class="px-4 py-3 text-xs" style={{ color: "#64748B" }}>{new Date(factura.fecha_emision).toLocaleDateString("es-HN")}</td>
+                    <td class="px-4 py-3">
+                      <div class="text-xs font-semibold" style={{ color: "#0F172A" }}>{factura.cliente?.nombre ?? "Consumidor Final"}</div>
+                      <div class="text-xs" style={{ color: "#94A3B8" }}>{factura.rtn_cliente ?? factura.cliente?.rtn ?? "Sin RTN"}</div>
+                    </td>
+                    <td class="px-4 py-3 text-xs" style={{ color: "#64748B" }}>{factura.productos?.length ?? 0}</td>
+                    <td class="px-4 py-3 text-xs" style={{ color: "#64748B" }}>{factura.servicios?.length ?? 0}</td>
+                    <td class="px-4 py-3 text-xs font-bold" style={{ color: "#0F172A" }}>{fmt(totalFactura(factura))}</td>
+                    <td class="px-4 py-3 text-right">
+                      <button
+                        onClick={() => verFactura(factura.id)}
+                        class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold"
+                        style={{ background: "#EFF6FF", color: "#2563EB", border: "1px solid #BFDBFE" }}
+                      >
+                        <Eye size={12} /> Ver
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

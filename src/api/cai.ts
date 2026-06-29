@@ -18,6 +18,15 @@ export function createCai(cai: any): Promise<Cai> {
   });
 }
 
+/** PATCH /cai/{id} */
+export function updateCai(id: string, cai: any): Promise<Cai> {
+  return request(`/cai/${id}`, caiSchema, {
+    method: 'PATCH',
+    body: cai,
+    auth: true,
+  });
+}
+
 /** GET /cai */
 export function getCais(): Promise<Cai[]> {
   return request('/cai', z.array(caiSchema), { auth: true });
@@ -40,6 +49,15 @@ export function getCaiRangos(estado?: 'PENDIENTE' | 'ACTIVO'): Promise<CaiRango[
 export function createCaiRango(rango: any): Promise<CaiRango> {
   return request('/cai/rangos', caiRangoSchema, {
     method: 'POST',
+    body: rango,
+    auth: true,
+  });
+}
+
+/** PATCH /cai/rangos/{id} */
+export function updateCaiRango(id: string, rango: any): Promise<CaiRango> {
+  return request(`/cai/rangos/${id}`, caiRangoSchema, {
+    method: 'PATCH',
     body: rango,
     auth: true,
   });

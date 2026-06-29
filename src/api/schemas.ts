@@ -72,6 +72,7 @@ export const sucursalResponseSchema = z.object({
 export const createSucursalSchema = z.object({
   nombre: z.string(),
   direccion: z.string(),
+  codigo_facturacion: z.string(),
 });
 export type CreateSucursal = z.infer<typeof createSucursalSchema>;
 
@@ -341,10 +342,9 @@ export type CaiRango = z.infer<typeof caiRangoSchema>;
 
 export const createCaiRangoSchema = z.object({
   cai_id: z.string(),
-  sucursal_id: z.number(),
-  establecimiento: z.string(),
   punto_emision: z.string(),
   tipo_documento: z.string(),
   rango_inicio: z.number(),
   rango_final: z.number(),
+  correlativo_actual: z.number().optional(),
 });

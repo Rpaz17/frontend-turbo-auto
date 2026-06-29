@@ -21,6 +21,8 @@ const facturasListWrapperSchema = z.object({
 export async function getFacturas(params?: {
   cliente?: string;
   fecha?: string;
+  desde?: string;
+  hasta?: string;
   numero?: string;
 }): Promise<Factura[]> {
   const res = await request('/facturas', z.array(facturaSchema), {

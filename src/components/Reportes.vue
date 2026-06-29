@@ -42,6 +42,40 @@ function csvCell(value: unknown) {
   return `"${String(value ?? "").replace(/"/g, '""')}"`;
 }
 
+function fechaEnRango(fecha: string, desde: string, hasta: string) {
+  const value = new Date(fecha).getTime();
+  const start = new Date(`${desde}T00:00:00`).getTime();
+  const end = new Date(`${hasta}T23:59:59.999`).getTime();
+  return Number.isFinite(value) && value >= start && value <= end;
+}
+
+function facturasDelPeriodo(facturas: FacturaReporte[], desde: string, hasta: string) {
+  return facturas.filter((f) => fechaEnRango(f.fecha_emision, desde, hasta));
+}
+
+function facturaMasBaja(facturas: FacturaReporte[], fallback: unknown) {
+  const positivos = facturas.map((f) => n(f.total)).filter((total) => total > 0);
+  return positivos.length ? Math.min(...positivos) : n(fallback);
+}
+
+function resumenDesdeFacturas(resumen: Record<string, any>, facturas: FacturaReporte[]) {
+  const montoProductos = facturas.reduce((acc, f) => acc + n(f.monto_productos), 0);
+  const montoServicios = facturas.reduce((acc, f) => acc + n(f.monto_servicios), 0);
+  const totales = facturas.map((f) => n(f.total)).filter((total) => total > 0);
+  const montoBruto = montoProductos + montoServicios;
+
+  return {
+    ...resumen,
+    total_facturas: facturas.length,
+    monto_bruto: montoBruto,
+    monto_productos: montoProductos,
+    monto_servicios: montoServicios,
+    promedio_por_factura: facturas.length ? montoBruto / facturas.length : 0,
+    factura_mas_alta: totales.length ? Math.max(...totales) : 0,
+    factura_mas_baja: totales.length ? Math.min(...totales) : 0,
+  };
+}
+
 function descargarCsv(nombre: string, rows: unknown[][]) {
   const csv = rows.map((row) => row.map(csvCell).join(",")).join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
@@ -314,7 +348,7 @@ export default defineComponent({
     });
 
     const exportar = () => {
-      const facturas = reporte.value?.ventas_por_periodo?.facturas ?? [];
+      const facturas = facturasDelPeriodo(reporte.value?.ventas_por_periodo?.facturas ?? [], desde.value, hasta.value);
       descargarCsv(`reporte-${desde.value}-${hasta.value}.csv`, [
         ["Numero factura", "Fecha", "Cliente", "Productos", "Servicios", "Total"],
         ...facturas.map((f) => [
@@ -330,12 +364,13 @@ export default defineComponent({
 
     const exportarPdf = () => {
       const ventas = reporte.value?.ventas_por_periodo;
-      const resumen = ventas?.resumen ?? {};
+      const facturas = facturasDelPeriodo(ventas?.facturas ?? [], desde.value, hasta.value);
+      const resumen = resumenDesdeFacturas(ventas?.resumen ?? {}, facturas);
       abrirPdfReporte({
         desde: desde.value,
         hasta: hasta.value,
         resumen,
-        facturas: ventas?.facturas ?? [],
+        facturas,
         productos: reporte.value?.productos_mas_vendidos ?? [],
         clientes: reporte.value?.clientes_frecuentes ?? [],
         servicios: resumen.servicios_mas_solicitados ?? [],
@@ -345,7 +380,7 @@ export default defineComponent({
     return () => {
       const ventas = reporte.value?.ventas_por_periodo;
       const resumen = ventas?.resumen ?? {};
-      const facturas = ventas?.facturas ?? [];
+      const facturas = facturasDelPeriodo(ventas?.facturas ?? [], desde.value, hasta.value);
       const totalVentas = n(resumen.monto_bruto);
       const totalFacturas = n(resumen.total_facturas);
       const clientesUnicos = n(resumen.clientes_unicos);
@@ -411,7 +446,7 @@ export default defineComponent({
                   { label: "Monto productos", value: formatMoney(n(resumen.monto_productos)), color: "#38BDF8" },
                   { label: "Monto servicios", value: formatMoney(n(resumen.monto_servicios)), color: "#FB923C" },
                   { label: "Factura más alta", value: formatMoney(n(resumen.factura_mas_alta)), color: "#86EFAC" },
-                  { label: "Factura más baja", value: formatMoney(n(resumen.factura_mas_baja)), color: "#C4B5FD" },
+                  { label: "Factura más baja", value: formatMoney(facturaMasBaja(facturas, resumen.factura_mas_baja)), color: "#C4B5FD" },
                 ].map((item) => <div key={item.label} class="flex items-center justify-between rounded-xl p-3" style={{ background: "#F8FAFC" }}><span class="text-xs font-semibold" style={{ color: "#64748B" }}>{item.label}</span><span class="text-sm font-bold" style={{ color: item.color }}>{item.value}</span></div>)}
               </div>
             </div>
@@ -421,7 +456,7 @@ export default defineComponent({
             <div class="rounded-2xl p-6 shadow-sm h-[245px] flex flex-col" style={{ background: "#fff", border: "1px solid rgba(15,23,42,0.06)" }}>
               <h3 class="font-bold mb-5" style={{ color: "#0F172A" }}>Productos más vendidos</h3>
               <PodioRanking
-                items={productos}
+                items={productos.slice(0, 3)}
                 emptyText="Sin productos en este período"
                 getKey={(p) => p.id ?? p.nombre}
                 getTitle={(p) => p.nombre}
