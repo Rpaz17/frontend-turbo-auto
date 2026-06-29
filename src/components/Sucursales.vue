@@ -2,7 +2,7 @@
 import { computed, defineComponent, onMounted, ref } from 'vue';
 import { AlertCircle, Building2, Calendar, Edit2, FileText, Loader2, MapPin, Plus, RefreshCw, ShieldCheck, Trash2, X } from 'lucide-vue-next';
 import { createSucursal, deleteSucursal, getSucursales, updateSucursal } from '../api/sucursales';
-import { createCai, createCaiRango, getCaiRangos, getCais } from '../api/cai';
+import { createCai, createCaiRango, getCaiRangos, getCais, updateCai, updateCaiRango } from '../api/cai';
 import type { Cai, CaiRango, Sucursal } from '../api/schemas';
 
 interface SucursalForm {
@@ -61,6 +61,8 @@ export default defineComponent({
     const error = ref('');
     const modal = ref(false);
     const sucursalEditando = ref<Sucursal | null>(null);
+    const caiEditando = ref<Cai | null>(null);
+    const rangoEditando = ref<CaiRango | null>(null);
     const form = ref<SucursalForm>({ ...formVacio, fecha_emision: hoyInput() });
 
     const cargarDatos = async () => {
@@ -82,19 +84,35 @@ export default defineComponent({
 
     const abrirModalNueva = () => {
       sucursalEditando.value = null;
+      caiEditando.value = null;
+      rangoEditando.value = null;
       form.value = { ...formVacio, fecha_emision: hoyInput() };
       modal.value = true;
       error.value = '';
     };
 
     const abrirModalEditar = (sucursal: Sucursal) => {
+      const caiSucursal = caisPorSucursal(sucursal.id)[0] ?? null;
+      const rangosCai = caiSucursal ? rangosPorCai(caiSucursal.id) : [];
+      const rangoSucursal = rangosCai.find((rango) => rango.estado === 'ACTIVO') ?? rangosCai[0] ?? null;
+
       sucursalEditando.value = sucursal;
+      caiEditando.value = caiSucursal;
+      rangoEditando.value = rangoSucursal;
       form.value = {
         ...formVacio,
         nombre: sucursal.nombre,
         direccion: sucursal.direccion,
         codigo_facturacion: sucursal.codigo_facturacion ?? '',
-        fecha_emision: hoyInput(),
+        cai_descripcion: caiSucursal?.descripcion ?? '',
+        codigo_cai: caiSucursal?.codigo_cai ?? '',
+        fecha_emision: caiSucursal?.fecha_emision ? caiSucursal.fecha_emision.slice(0, 10) : hoyInput(),
+        fecha_vencimiento: caiSucursal?.fecha_vencimiento ? caiSucursal.fecha_vencimiento.slice(0, 10) : '',
+        punto_emision: rangoSucursal?.punto_emision ?? '001',
+        tipo_documento: rangoSucursal?.tipo_documento ?? '01',
+        rango_inicio: rangoSucursal ? String(rangoSucursal.rango_inicio) : '1',
+        rango_final: rangoSucursal ? String(rangoSucursal.rango_final) : '',
+        correlativo_actual: rangoSucursal ? String(rangoSucursal.correlativo_actual) : '0',
       };
       modal.value = true;
       error.value = '';
@@ -103,6 +121,8 @@ export default defineComponent({
     const cerrarModal = () => {
       modal.value = false;
       sucursalEditando.value = null;
+      caiEditando.value = null;
+      rangoEditando.value = null;
       form.value = { ...formVacio, fecha_emision: hoyInput() };
     };
 
@@ -142,22 +162,30 @@ export default defineComponent({
         const sucursal = response.data as Sucursal;
 
         if (debeCrearCai.value) {
-          const cai = await createCai({
+          const caiPayload = {
             descripcion: form.value.cai_descripcion.trim(),
             codigo_cai: form.value.codigo_cai.trim(),
             fecha_emision: form.value.fecha_emision,
             fecha_vencimiento: form.value.fecha_vencimiento,
             sucursal_id: Number(sucursal.id),
-          });
+          };
 
-          await createCaiRango({
+          const cai = caiEditando.value ? await updateCai(caiEditando.value.id, caiPayload) : await createCai(caiPayload);
+
+          const rangoPayload = {
             cai_id: cai.id,
             punto_emision: form.value.punto_emision.trim(),
             tipo_documento: form.value.tipo_documento.trim(),
             rango_inicio: Number(form.value.rango_inicio),
             rango_final: Number(form.value.rango_final),
             correlativo_actual: Number(form.value.correlativo_actual || 0),
-          });
+          };
+
+          if (rangoEditando.value) {
+            await updateCaiRango(rangoEditando.value.id, rangoPayload);
+          } else {
+            await createCaiRango(rangoPayload);
+          }
         }
 
         cerrarModal();
